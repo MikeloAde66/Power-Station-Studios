@@ -30,7 +30,7 @@ export type ChannelEngine = {
 // tanh gives a graceful, rounded knee instead of a hard digital clip; the
 // squared term adds a touch of even-order (asymmetric) harmonic content,
 // which is what reads as "warm" rather than just "quieter and squashed."
-export function makeSaturationCurve(amount: number): Float32Array {
+export function makeSaturationCurve(amount: number): Float32Array<ArrayBuffer> {
   const n = 2048;
   const curve = new Float32Array(n);
   const drive = 1 + amount * 14; // 1x (clean) up to 15x (hot) pre-gain into the curve
