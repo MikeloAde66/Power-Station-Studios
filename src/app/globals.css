@@ -1,0 +1,24 @@
+:root {
+  --pmo-bg: #0e0b08;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--pmo-bg);
+  color: #eee6d6;
+  font-family: var(--font-body, Inter, system-ui, sans-serif);
+  margin: 0;
+}
+
+a {
+  color: #e8b339;
+}

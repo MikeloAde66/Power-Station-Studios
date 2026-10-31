@@ -1,0 +1,8 @@
+.master {
+  border-color: rgba(192, 57, 43, 0.4);
+  background: linear-gradient(180deg, #2e2222, #221a1a);
+}
+
+.spacer {
+  flex: 0 0 auto;
+}

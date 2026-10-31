@@ -1,0 +1,7 @@
+.console {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: center;
+  align-items: flex-start;
+}
