@@ -1,0 +1,78 @@
+.knobWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+}
+
+.knob {
+  border-radius: 50%;
+  position: relative;
+  cursor: ns-resize;
+  touch-action: none;
+  outline: none;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.65),
+    inset 0 2px 3px rgba(255, 255, 255, 0.18),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.55);
+}
+
+.knob:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(192, 57, 43, 0.5),
+    0 10px 20px rgba(0, 0, 0, 0.65),
+    inset 0 2px 3px rgba(255, 255, 255, 0.18),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.55);
+}
+
+.red {
+  background:
+    radial-gradient(circle at 32% 28%, #f06a52 0%, #c23a24 38%, #7e1a0d 78%, #4a0e06 100%);
+  border: 4px solid #2b0a05;
+}
+
+.white {
+  background:
+    radial-gradient(circle at 32% 28%, #fbf8f1 0%, #e6e0d2 35%, #b9b1a0 75%, #8a8273 100%);
+  border: 4px solid #5e584c;
+}
+
+.indicator {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  width: 5px;
+  height: 42%;
+  margin-left: -2.5px;
+  border-radius: 3px;
+  background: #141414;
+  transform-origin: 50% 100%;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+.red .indicator {
+  background: #210602;
+}
+
+.cap {
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.25), rgba(0, 0, 0, 0.25) 80%);
+  pointer-events: none;
+}
+
+.label {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #e4ddcc;
+}
+
+.value {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 13px;
+  color: #d98a5f;
+}
