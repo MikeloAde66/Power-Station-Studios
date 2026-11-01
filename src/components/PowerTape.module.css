@@ -160,12 +160,15 @@
 .reelSpoke {
   position: absolute;
   left: 50%;
-  top: 8%;
+  top: 10%;
+  bottom: 10%;
   width: 3px;
-  height: 36%;
   margin-left: -1.5px;
-  background: #4a4a4a;
-  transform-origin: 50% 400%;
+  background: #58585a;
+  /* A full diameter line through the reel's own center. Default
+     transform-origin (50% 50%) is then exactly that center, so rotating it
+     fans spokes out symmetrically inside the circle instead of swinging
+     them outside it, which is what the old 50% 400% origin was doing. */
   border-radius: 2px;
 }
 
