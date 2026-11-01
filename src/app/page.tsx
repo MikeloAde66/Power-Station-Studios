@@ -1,3 +1,4 @@
+import PowerDynamics from '@/components/PowerDynamics';
 import PowerMixOne from '@/components/PowerMixOne';
 import styles from './page.module.css';
 
@@ -6,6 +7,7 @@ export default function Home() {
     <div className={styles.page}>
       <main className={styles.main}>
         <PowerMixOne />
+        <PowerDynamics />
       </main>
     </div>
   );

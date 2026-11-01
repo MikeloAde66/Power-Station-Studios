@@ -16,16 +16,23 @@ export type MasterBus = {
   analyser: AnalyserNode;
 };
 
-export type ChannelEngine = {
+// Shared shape for anything that can load a file, play a test tone, or
+// monitor a live mic — a channel strip, a dynamics module, a delay, etc.
+// ChannelEngine and DynamicsEngine both satisfy this structurally, so the
+// transport/mic functions below work for either without duplication.
+export type AudioStage = {
   ctx: AudioContext;
-  sourceNode: AudioBufferSourceNode | null;
+  sourceNode: AudioBufferSourceNode | OscillatorNode | null;
   buffer: AudioBuffer | null;
   inputGain: GainNode;
+  micNode: MediaStreamAudioSourceNode | null;
+  micStream: MediaStream | null;
+};
+
+export type ChannelEngine = AudioStage & {
   shaper: WaveShaperNode;
   channelGain: GainNode;
   analyser: AnalyserNode;
-  micNode: MediaStreamAudioSourceNode | null;
-  micStream: MediaStream | null;
 };
 
 // Builds a soft-saturation transfer curve. `amount` is 0..1 (the DRIVE knob).
@@ -113,7 +120,7 @@ export function createChannelEngine(bus: MasterBus): ChannelEngine {
 // Live mic input — raw/unprocessed so the browser's own echo cancellation,
 // noise suppression, and auto-gain don't fight with (or mask) what the
 // preamp stage is actually doing to the signal.
-export async function connectMic(engine: ChannelEngine): Promise<void> {
+export async function connectMic(engine: AudioStage): Promise<void> {
   disconnectMic(engine);
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -128,7 +135,7 @@ export async function connectMic(engine: ChannelEngine): Promise<void> {
   engine.micNode = node;
 }
 
-export function disconnectMic(engine: ChannelEngine) {
+export function disconnectMic(engine: AudioStage) {
   if (engine.micNode) {
     engine.micNode.disconnect();
     engine.micNode = null;
@@ -157,7 +164,7 @@ export function setChannelLevel(engine: ChannelEngine, amount01: number) {
 
 // Decodes the file ONCE and stores the resulting AudioBuffer on the engine.
 // Does not create or start a playback node — call startBuffer() for that.
-export async function loadFileIntoEngine(engine: ChannelEngine, file: File) {
+export async function loadFileIntoEngine(engine: AudioStage, file: File) {
   const arrayBuffer = await file.arrayBuffer();
   const audioBuffer = await engine.ctx.decodeAudioData(arrayBuffer);
   engine.buffer = audioBuffer;
@@ -168,7 +175,7 @@ export async function loadFileIntoEngine(engine: ChannelEngine, file: File) {
 // starts it. AudioBufferSourceNode can only be started once ever, so a new
 // node is required on every Play press — this is the correct, cheap way to
 // do that (no re-decoding).
-export function startBuffer(engine: ChannelEngine): AudioBufferSourceNode | null {
+export function startBuffer(engine: AudioStage): AudioBufferSourceNode | null {
   if (!engine.buffer) return null;
   stopSource(engine);
   const node = engine.ctx.createBufferSource();
@@ -180,17 +187,17 @@ export function startBuffer(engine: ChannelEngine): AudioBufferSourceNode | null
   return node;
 }
 
-export function playTestTone(engine: ChannelEngine, freq = 110) {
+export function playTestTone(engine: AudioStage, freq = 110) {
   stopSource(engine);
   const osc = engine.ctx.createOscillator();
   osc.type = 'sawtooth';
-  osc.frequency.value = freq; // CH1/CH2 use different pitches so you can tell them apart
+  osc.frequency.value = freq; // lets you tell modules apart when stacking them
   osc.connect(engine.inputGain);
-  engine.sourceNode = osc as unknown as AudioBufferSourceNode;
+  engine.sourceNode = osc;
   osc.start();
 }
 
-export function stopSource(engine: ChannelEngine) {
+export function stopSource(engine: AudioStage) {
   if (engine.sourceNode) {
     try {
       engine.sourceNode.stop();
@@ -214,6 +221,105 @@ function readAnalyserLevel(analyser: AnalyserNode): number {
 }
 
 // RMS-based level read, 0..1, for driving a channel meter.
-export function readLevel(engine: ChannelEngine): number {
+export function readLevel(engine: { analyser: AnalyserNode }): number {
   return readAnalyserLevel(engine.analyser);
+}
+
+// ---------------------------------------------------------------------------
+// Power Dynamics — compressor + limiter module.
+//
+// Real signal-chain order: input -> compressor (gentler, musical gain
+// control) -> limiter (a second, harder stage that catches peaks the
+// compressor lets through) -> output trim -> meter -> master bus. Both
+// stages are genuine Web Audio DynamicsCompressorNodes (threshold, knee,
+// ratio, attack, release) — this is the same tool real DAWs ship, not a
+// cosmetic knob.
+// ---------------------------------------------------------------------------
+
+export type DynamicsEngine = AudioStage & {
+  compressor: DynamicsCompressorNode;
+  limiter: DynamicsCompressorNode;
+  outputGain: GainNode;
+  analyser: AnalyserNode;
+};
+
+export function createDynamicsEngine(bus: MasterBus): DynamicsEngine {
+  const ctx = bus.ctx;
+
+  const inputGain = ctx.createGain();
+  inputGain.gain.value = 1;
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -24;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 3;
+  compressor.attack.value = 0.01;
+  compressor.release.value = 0.2;
+
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -3;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20; // Web Audio's max ratio — the hardest clamp this node can do
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.1;
+
+  const outputGain = ctx.createGain();
+  outputGain.gain.value = 0.9;
+
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.75;
+
+  inputGain.connect(compressor);
+  compressor.connect(limiter);
+  limiter.connect(outputGain);
+  outputGain.connect(analyser);
+  analyser.connect(bus.masterGain);
+
+  return {
+    ctx,
+    sourceNode: null,
+    buffer: null,
+    inputGain,
+    micNode: null,
+    micStream: null,
+    compressor,
+    limiter,
+    outputGain,
+    analyser,
+  };
+}
+
+export function setCompThreshold(engine: DynamicsEngine, db: number) {
+  engine.compressor.threshold.setTargetAtTime(db, engine.ctx.currentTime, 0.01);
+}
+
+export function setCompRatio(engine: DynamicsEngine, ratio: number) {
+  engine.compressor.ratio.setTargetAtTime(ratio, engine.ctx.currentTime, 0.01);
+}
+
+export function setCompAttack(engine: DynamicsEngine, seconds: number) {
+  engine.compressor.attack.setTargetAtTime(seconds, engine.ctx.currentTime, 0.01);
+}
+
+export function setCompRelease(engine: DynamicsEngine, seconds: number) {
+  engine.compressor.release.setTargetAtTime(seconds, engine.ctx.currentTime, 0.01);
+}
+
+// The limiter's ceiling — how close to 0dB peaks are allowed before the
+// hard, fast stage clamps them. Lower = louder incoming peaks get caught.
+export function setLimiterCeiling(engine: DynamicsEngine, db: number) {
+  engine.limiter.threshold.setTargetAtTime(db, engine.ctx.currentTime, 0.01);
+}
+
+export function setDynOutputLevel(engine: DynamicsEngine, amount01: number) {
+  const db = amount01 <= 0 ? -60 : -60 * (1 - amount01);
+  const gain = Math.pow(10, db / 20);
+  engine.outputGain.gain.setTargetAtTime(gain, engine.ctx.currentTime, 0.01);
+}
+
+// How many dB of gain reduction the compressor is currently applying —
+// drives a GR meter the same way readLevel() drives a signal meter.
+export function readGainReduction(engine: DynamicsEngine): number {
+  return engine.compressor.reduction;
 }
