@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  connectMic,
   createChannelEngine,
   createMasterBus,
+  disconnectMic,
   loadFileIntoEngine,
   playTestTone,
   readLevel,
@@ -57,6 +59,7 @@ export default function PowerMixOne() {
   const [meter, setMeter] = useState(0); // 0-1
   const [error, setError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [micActive, setMicActive] = useState(false);
 
   function ensureEngine() {
     if (!engineRef.current) {
@@ -101,6 +104,13 @@ export default function PowerMixOne() {
     setError(null);
     try {
       const engine = ensureEngine();
+      // A live mic feed and a one-shot file/tone feed both land on the same
+      // input stage — pressing PLAY means "play this file", so drop the
+      // mic first rather than letting both sources talk at once.
+      if (micActive) {
+        disconnectMic(engine);
+        setMicActive(false);
+      }
       await engine.ctx.resume();
       if (fileName && engine.buffer) {
         const node = startBuffer(engine);
@@ -123,6 +133,42 @@ export default function PowerMixOne() {
     if (engine) stopSource(engine);
     setPlaying(false);
   }
+
+  async function handleMicToggle() {
+    setError(null);
+    try {
+      const engine = ensureEngine();
+      if (micActive) {
+        disconnectMic(engine);
+        setMicActive(false);
+        return;
+      }
+      // Live monitoring and file playback both feed the same input stage —
+      // stop any file/tone source first so turning MIC on doesn't layer a
+      // second signal underneath it.
+      stopSource(engine);
+      setPlaying(false);
+      await engine.ctx.resume();
+      await connectMic(engine);
+      setMicActive(true);
+    } catch (err) {
+      setMicActive(false);
+      const message = (err as Error)?.message ?? String(err);
+      if ((err as Error)?.name === 'NotAllowedError') {
+        setError('Mic access was blocked — allow microphone permission for this site and try again.');
+      } else if ((err as Error)?.name === 'NotFoundError') {
+        setError("No microphone found — check your Scarlett 2i2 is connected and selected as the input.");
+      } else {
+        setError(`Mic input failed: ${message}`);
+      }
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (engineRef.current) disconnectMic(engineRef.current);
+    };
+  }, []);
 
   function handleDriveChange(v: number) {
     setDriveState(v);
@@ -179,6 +225,13 @@ export default function PowerMixOne() {
           </button>
           <button className={styles.iconBtn} onClick={handleStop} disabled={!playing} title="Stop">
             &#9632;
+          </button>
+          <button
+            className={`${styles.iconBtn} ${micActive ? styles.micActive : ''}`}
+            onClick={handleMicToggle}
+            title={micActive ? 'Stop live mic monitoring' : 'Monitor live mic input (e.g. Scarlett 2i2)'}
+          >
+            &#9679;
           </button>
         </div>
       </div>

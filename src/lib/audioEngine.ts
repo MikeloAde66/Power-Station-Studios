@@ -24,6 +24,8 @@ export type ChannelEngine = {
   shaper: WaveShaperNode;
   channelGain: GainNode;
   analyser: AnalyserNode;
+  micNode: MediaStreamAudioSourceNode | null;
+  micStream: MediaStream | null;
 };
 
 // Builds a soft-saturation transfer curve. `amount` is 0..1 (the DRIVE knob).
@@ -45,8 +47,12 @@ export function makeSaturationCurve(amount: number): Float32Array<ArrayBuffer> {
   const norm = Math.tanh(drive) || 1;
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * 2 - 1;
-    const shaped = Math.tanh(drive * x + 0.12 * amount * x * x);
-    curve[i] = shaped / norm;
+    const wet = Math.tanh(drive * x + 0.12 * amount * x * x) / norm;
+    // Crossfade dry (true identity, x) toward the saturated curve as amount
+    // rises. At amount = 0 this is EXACTLY y = x — a real bypass, not just a
+    // very mild curve — so DRIVE fully down adds zero coloration and zero
+    // noise-floor lift, the way a clean preamp stage should behave at unity.
+    curve[i] = amount <= 0 ? x : wet * amount + x * (1 - amount);
   }
   return curve;
 }
@@ -101,7 +107,36 @@ export function createChannelEngine(bus: MasterBus): ChannelEngine {
   channelGain.connect(analyser);
   analyser.connect(bus.masterGain);
 
-  return { ctx, sourceNode: null, buffer: null, inputGain, shaper, channelGain, analyser };
+  return { ctx, sourceNode: null, buffer: null, inputGain, shaper, channelGain, analyser, micNode: null, micStream: null };
+}
+
+// Live mic input — raw/unprocessed so the browser's own echo cancellation,
+// noise suppression, and auto-gain don't fight with (or mask) what the
+// preamp stage is actually doing to the signal.
+export async function connectMic(engine: ChannelEngine): Promise<void> {
+  disconnectMic(engine);
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    },
+  });
+  const node = engine.ctx.createMediaStreamSource(stream);
+  node.connect(engine.inputGain);
+  engine.micStream = stream;
+  engine.micNode = node;
+}
+
+export function disconnectMic(engine: ChannelEngine) {
+  if (engine.micNode) {
+    engine.micNode.disconnect();
+    engine.micNode = null;
+  }
+  if (engine.micStream) {
+    engine.micStream.getTracks().forEach((track) => track.stop());
+    engine.micStream = null;
+  }
 }
 
 export function setDrive(engine: ChannelEngine, amount01: number) {
