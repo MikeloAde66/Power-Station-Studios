@@ -81,7 +81,6 @@ export default function PowerDynamics() {
       setCompRatio(engine, squeezeToRatio(squeeze / 100));
       setDynOutputLevel(engine, output / 100);
       engineRef.current = engine;
-      tick();
     }
     return engineRef.current!;
   }
@@ -104,6 +103,12 @@ export default function PowerDynamics() {
       setCompRelease(engine, preset.releaseMs / 1000);
       setLimiterCeiling(engine, preset.ceilingDb);
     }
+    // Started here (not inside ensureEngine) so the meter/GR loop is
+    // re-armed on every effect run, including React StrictMode's
+    // dev-mode mount -> cleanup -> mount cycle, which would otherwise
+    // cancel the one scheduled frame from ensureEngine's one-time setup
+    // and leave the loop permanently stopped.
+    rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (engineRef.current) disconnectMic(engineRef.current);
