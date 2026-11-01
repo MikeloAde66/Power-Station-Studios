@@ -323,3 +323,139 @@ export function setDynOutputLevel(engine: DynamicsEngine, amount01: number) {
 export function readGainReduction(engine: DynamicsEngine): number {
   return engine.compressor.reduction;
 }
+
+// ---------------------------------------------------------------------------
+// Power Tape — original tape-machine-style emulation. Three real, modeled
+// tape phenomena, not just a label: (1) saturation — a softer, more
+// symmetric knee than the preamp curve, since tape rounds peaks rather than
+// adding grit; (2) wow & flutter — a slow (~0.6Hz) and a fast (~8Hz) LFO
+// wobbling a short DelayNode's delay time, which IS physically what pitch
+// drift from inconsistent tape speed looks like; (3) tape hiss — a
+// filtered noise bed mixed in underneath. None of this names or models any
+// specific manufacturer's machine.
+// ---------------------------------------------------------------------------
+
+export type TapeEngine = AudioStage & {
+  satShaper: WaveShaperNode;
+  wobbleDelay: DelayNode;
+  wowGain: GainNode;
+  flutterGain: GainNode;
+  noiseGain: GainNode;
+  outputGain: GainNode;
+  analyser: AnalyserNode;
+};
+
+function makeTapeCurve(amount: number): Float32Array<ArrayBuffer> {
+  const n = 2048;
+  const curve = new Float32Array(n);
+  const drive = 1 + Math.pow(amount, 1.6) * 5;
+  const norm = Math.tanh(drive) || 1;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    const wet = Math.tanh(drive * x) / norm;
+    curve[i] = amount <= 0 ? x : wet * amount + x * (1 - amount);
+  }
+  return curve;
+}
+
+function createNoiseBuffer(ctx: AudioContext): AudioBuffer {
+  const length = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+  return buffer;
+}
+
+export function createTapeEngine(bus: MasterBus): TapeEngine {
+  const ctx = bus.ctx;
+
+  const inputGain = ctx.createGain();
+  inputGain.gain.value = 1;
+
+  const satShaper = ctx.createWaveShaper();
+  satShaper.curve = makeTapeCurve(0.2);
+  satShaper.oversample = '4x';
+
+  const wobbleDelay = ctx.createDelay(0.05);
+  wobbleDelay.delayTime.value = 0.008;
+
+  const wowOsc = ctx.createOscillator();
+  wowOsc.type = 'sine';
+  wowOsc.frequency.value = 0.6;
+  const wowGain = ctx.createGain();
+  wowGain.gain.value = 0.0005;
+  wowOsc.connect(wowGain);
+  wowGain.connect(wobbleDelay.delayTime);
+  wowOsc.start();
+
+  const flutterOsc = ctx.createOscillator();
+  flutterOsc.type = 'sine';
+  flutterOsc.frequency.value = 8;
+  const flutterGain = ctx.createGain();
+  flutterGain.gain.value = 0.00015;
+  flutterOsc.connect(flutterGain);
+  flutterGain.connect(wobbleDelay.delayTime);
+  flutterOsc.start();
+
+  const noiseSource = ctx.createBufferSource();
+  noiseSource.buffer = createNoiseBuffer(ctx);
+  noiseSource.loop = true;
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 6000;
+  noiseFilter.Q.value = 0.5;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0;
+  noiseSource.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseSource.start();
+
+  const outputGain = ctx.createGain();
+  outputGain.gain.value = 0.85;
+
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.75;
+
+  inputGain.connect(satShaper);
+  satShaper.connect(wobbleDelay);
+  wobbleDelay.connect(outputGain);
+  noiseGain.connect(outputGain);
+  outputGain.connect(analyser);
+  analyser.connect(bus.masterGain);
+
+  return {
+    ctx,
+    sourceNode: null,
+    buffer: null,
+    inputGain,
+    micNode: null,
+    micStream: null,
+    satShaper,
+    wobbleDelay,
+    wowGain,
+    flutterGain,
+    noiseGain,
+    outputGain,
+    analyser,
+  };
+}
+
+export function setTapeDrive(engine: TapeEngine, amount01: number) {
+  engine.satShaper.curve = makeTapeCurve(amount01);
+}
+
+export function setWowFlutterDepth(engine: TapeEngine, amount01: number) {
+  engine.wowGain.gain.setTargetAtTime(amount01 * 0.0022, engine.ctx.currentTime, 0.01);
+  engine.flutterGain.gain.setTargetAtTime(amount01 * 0.0007, engine.ctx.currentTime, 0.01);
+}
+
+export function setTapeNoiseLevel(engine: TapeEngine, amount01: number) {
+  engine.noiseGain.gain.setTargetAtTime(amount01 * 0.045, engine.ctx.currentTime, 0.01);
+}
+
+export function setTapeOutputLevel(engine: TapeEngine, amount01: number) {
+  const db = amount01 <= 0 ? -60 : -60 * (1 - amount01);
+  const gain = Math.pow(10, db / 20);
+  engine.outputGain.gain.setTargetAtTime(gain, engine.ctx.currentTime, 0.01);
+}

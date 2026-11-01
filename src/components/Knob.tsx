@@ -8,7 +8,7 @@ type KnobProps = {
   value: number; // 0-100
   onChange: (v: number) => void;
   valueLabel: string;
-  color?: 'red' | 'white';
+  color?: 'red' | 'white' | 'chrome' | 'brass';
   size?: number; // px
 };
 
@@ -65,7 +65,7 @@ export default function Knob({ label, value, onChange, valueLabel, color = 'whit
   return (
     <div className={styles.knobWrap} style={{ width: size }}>
       <div
-        className={`${styles.knob} ${color === 'red' ? styles.red : styles.white}`}
+        className={`${styles.knob} ${styles[color]}`}
         style={{ width: size, height: size }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

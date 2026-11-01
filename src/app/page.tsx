@@ -1,5 +1,6 @@
 import PowerDynamics from '@/components/PowerDynamics';
 import PowerMixOne from '@/components/PowerMixOne';
+import PowerTape from '@/components/PowerTape';
 import styles from './page.module.css';
 
 export default function Home() {
@@ -8,6 +9,7 @@ export default function Home() {
       <main className={styles.main}>
         <PowerMixOne />
         <PowerDynamics />
+        <PowerTape />
       </main>
     </div>
   );

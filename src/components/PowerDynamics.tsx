@@ -22,6 +22,7 @@ import {
   type MasterBus,
 } from '@/lib/audioEngine';
 import Knob from './Knob';
+import VUMeter from './VUMeter';
 import styles from './PowerDynamics.module.css';
 
 // Factory presets: real compressor/limiter settings (threshold, ratio,
@@ -212,7 +213,6 @@ export default function PowerDynamics() {
   const thresholdDb = squeezeToThreshold(squeeze / 100);
   const ratio = squeezeToRatio(squeeze / 100);
   const outputDb = output <= 0 ? -60 : -60 * (1 - output / 100);
-  const meterPct = Math.min(1, meter * 2.4) * 100;
   const grPct = gr * 100;
 
   return (
@@ -258,18 +258,17 @@ export default function PowerDynamics() {
           value={squeeze}
           onChange={handleSqueezeChange}
           valueLabel={`${thresholdDb.toFixed(0)}dB ${ratio.toFixed(1)}:1`}
-          color="red"
-          size={150}
+          color="chrome"
+          size={130}
         />
 
         <div className={styles.meterStack}>
-          <div className={styles.meterLabel}>GR</div>
-          <div className={styles.meterTrack}>
-            <div className={styles.grFill} style={{ height: `${grPct}%` }} />
-          </div>
-          <div className={styles.meterLabel}>OUT</div>
-          <div className={styles.meterTrack}>
-            <div className={styles.meterFill} style={{ height: `${meterPct}%` }} />
+          <VUMeter level01={meter} faceColor="#d9a63a" needleColor="#1a1208" scaleColor="#3a2409" width={210} />
+          <div className={styles.grRow}>
+            <span className={styles.grCaption}>GR</span>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className={styles.grLed} data-lit={grPct / 100 >= (i + 1) / 8} data-hot={i >= 6} />
+            ))}
           </div>
         </div>
 
@@ -278,8 +277,8 @@ export default function PowerDynamics() {
           value={output}
           onChange={handleOutputChange}
           valueLabel={outputDb <= -60 ? '-∞' : `${outputDb.toFixed(1)} dB`}
-          color="white"
-          size={150}
+          color="chrome"
+          size={130}
         />
       </div>
 
