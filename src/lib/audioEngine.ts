@@ -30,10 +30,18 @@ export type ChannelEngine = {
 // tanh gives a graceful, rounded knee instead of a hard digital clip; the
 // squared term adds a touch of even-order (asymmetric) harmonic content,
 // which is what reads as "warm" rather than just "quieter and squashed."
+//
+// A preamp's job is subtle coloration across most of its travel — real grit
+// is a special-occasion thing (ear candy on a snare, not a default), not
+// what you want by mid-knob. So the amount-to-drive mapping is backloaded
+// (amount^1.8) rather than linear: the first ~60% of the knob stays in warm,
+// usable territory, and the curve only opens up into real saturation in the
+// last third of the range.
 export function makeSaturationCurve(amount: number): Float32Array<ArrayBuffer> {
   const n = 2048;
   const curve = new Float32Array(n);
-  const drive = 1 + amount * 14; // 1x (clean) up to 15x (hot) pre-gain into the curve
+  const shaped01 = Math.pow(amount, 1.8); // backloaded response curve
+  const drive = 1 + shaped01 * 10; // 1x (clean) up to 11x (hot) pre-gain into the curve, only at the top of the knob
   const norm = Math.tanh(drive) || 1;
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * 2 - 1;
@@ -99,8 +107,10 @@ export function createChannelEngine(bus: MasterBus): ChannelEngine {
 export function setDrive(engine: ChannelEngine, amount01: number) {
   engine.shaper.curve = makeSaturationCurve(amount01);
   // A little extra input gain as drive increases, so pushing DRIVE actually
-  // pushes the curve instead of just resting at a louder clean level.
-  engine.inputGain.gain.setTargetAtTime(1 + amount01 * 2.2, engine.ctx.currentTime, 0.01);
+  // pushes the curve instead of just resting at a louder clean level. Kept
+  // modest (vs. the old 2.2x) so this reads as "the color stage working,"
+  // not just "it got louder" stacked on top of the curve's own saturation.
+  engine.inputGain.gain.setTargetAtTime(1 + amount01 * 1.2, engine.ctx.currentTime, 0.01);
 }
 
 export function setChannelLevel(engine: ChannelEngine, amount01: number) {
@@ -128,7 +138,7 @@ export function startBuffer(engine: ChannelEngine): AudioBufferSourceNode | null
   stopSource(engine);
   const node = engine.ctx.createBufferSource();
   node.buffer = engine.buffer;
-  node.loop = true;
+  node.loop = false; // plays through once and stops — doesn't loop forever
   node.connect(engine.inputGain);
   node.start();
   engine.sourceNode = node;

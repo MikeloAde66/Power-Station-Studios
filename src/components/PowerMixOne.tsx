@@ -28,7 +28,7 @@ import styles from './PowerMixOne.module.css';
 type Preset = { name: string; driveDb: number; outputDb: number };
 
 const PRESETS: Preset[] = [
-  { name: 'CLEAN', driveDb: 2, outputDb: -2 },
+  { name: 'CLEAN', driveDb: 3.5, outputDb: -3.5 },
   { name: 'TRACKING', driveDb: 5, outputDb: -5 },
   { name: 'PUSH', driveDb: 8, outputDb: -8 },
   { name: 'HOT', driveDb: 10, outputDb: -10 },
@@ -103,7 +103,12 @@ export default function PowerMixOne() {
       const engine = ensureEngine();
       await engine.ctx.resume();
       if (fileName && engine.buffer) {
-        startBuffer(engine);
+        const node = startBuffer(engine);
+        // File no longer loops — when it plays through naturally, flip the
+        // UI back to "not playing" instead of leaving PLAY stuck disabled.
+        if (node) {
+          node.onended = () => setPlaying(false);
+        }
       } else {
         playTestTone(engine, 110);
       }
