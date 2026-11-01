@@ -33,6 +33,14 @@ function dbToAngle(db: number) {
   return MIN_ANGLE + t * (MAX_ANGLE - MIN_ANGLE);
 }
 
+// Server and client can round a raw float-to-string pixel value a hair
+// differently, which React's hydration check flags even though the visual
+// difference is thousandths of a pixel. Rounding here makes both passes
+// produce byte-identical output.
+function r2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
 export default function VUMeter({
   level01,
   faceColor = '#d9a63a',
@@ -63,8 +71,8 @@ export default function VUMeter({
       {TICKS.map((tick) => {
         const a = dbToAngle(tick.db);
         const rad = (a * Math.PI) / 180;
-        const x = pivotX + radius * Math.sin(rad);
-        const y = pivotY - radius * Math.cos(rad);
+        const x = r2(pivotX + radius * Math.sin(rad));
+        const y = r2(pivotY - radius * Math.cos(rad));
         return (
           <div
             key={tick.db}
@@ -73,7 +81,7 @@ export default function VUMeter({
               left: x,
               top: y,
               transform: 'translate(-50%, -50%)',
-              fontSize: Math.max(9, width * 0.045),
+              fontSize: r2(Math.max(9, width * 0.045)),
               fontFamily: 'var(--font-mono, monospace)',
               fontWeight: 700,
               color: tick.db >= 0 ? '#8a1f14' : scaleColor,
@@ -89,10 +97,10 @@ export default function VUMeter({
           left: pivotX,
           top: pivotY,
           width: 2,
-          height: radius * 0.9,
+          height: r2(radius * 0.9),
           background: needleColor,
           transformOrigin: '50% 100%',
-          transform: `translate(-50%, -100%) rotate(${angle}deg)`,
+          transform: `translate(-50%, -100%) rotate(${r2(angle)}deg)`,
           transition: 'transform 90ms ease-out',
         }}
       />
