@@ -134,13 +134,15 @@
 
 .reel {
   position: relative;
-  width: 86px;
-  height: 86px;
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 30%, #3a3a3a, #121212 70%);
-  border: 3px solid #1a1a1a;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 3px 6px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  /* The generated reel art is circular inside a square canvas without true
+     alpha transparency behind it — clipping the container to a circle crops
+     away the square's corners instead of needing to edit the PNG. */
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
   animation: reel-spin 3.2s linear infinite;
   animation-play-state: paused;
 }
@@ -149,27 +151,9 @@
   animation-play-state: running;
 }
 
-.reelHub {
-  position: absolute;
-  inset: 38%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #d8c89a, #8a7748 75%);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
-}
-
-.reelSpoke {
-  position: absolute;
-  left: 50%;
-  top: 10%;
-  bottom: 10%;
-  width: 3px;
-  margin-left: -1.5px;
-  background: #58585a;
-  /* A full diameter line through the reel's own center. Default
-     transform-origin (50% 50%) is then exactly that center, so rotating it
-     fans spokes out symmetrically inside the circle instead of swinging
-     them outside it, which is what the old 50% 400% origin was doing. */
-  border-radius: 2px;
+.reelImg {
+  object-fit: contain;
+  transform: scale(1.18);
 }
 
 @keyframes reel-spin {

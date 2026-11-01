@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import {
   connectMic,
@@ -230,17 +231,11 @@ export default function PowerTape() {
 
       <div className={styles.transportDeck}>
         <div className={`${styles.reel} ${spinning ? styles.spinning : ''}`}>
-          <div className={styles.reelHub} />
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={styles.reelSpoke} style={{ transform: `rotate(${i * 45}deg)` }} />
-          ))}
+          <Image src="/tape/reel-full.png" alt="" fill sizes="120px" className={styles.reelImg} priority />
         </div>
         <VUMeter level01={meter} faceColor="#ead9b0" needleColor="#2a1c0a" scaleColor="#4a3516" width={190} />
         <div className={`${styles.reel} ${spinning ? styles.spinning : ''}`}>
-          <div className={styles.reelHub} />
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={styles.reelSpoke} style={{ transform: `rotate(${i * 45}deg)` }} />
-          ))}
+          <Image src="/tape/reel-takeup.png" alt="" fill sizes="120px" className={styles.reelImg} priority />
         </div>
       </div>
 
