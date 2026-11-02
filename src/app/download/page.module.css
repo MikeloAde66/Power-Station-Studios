@@ -1,0 +1,88 @@
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #0c0c0c;
+  color: #ead9b0;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 12px;
+  padding: 36px 32px;
+  background: linear-gradient(160deg, #fdeecb 0%, #f0cd73 16%, #d9a33e 36%, #b17f26 56%, #8a611c 76%, #5c4012 100%);
+  border: 3px solid #2e2008;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.55), inset 0 2px 1px rgba(255, 255, 255, 0.5);
+  color: #2a1c0a;
+}
+
+.title {
+  font-family: var(--font-display, 'Barlow Condensed', sans-serif);
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  margin: 0 0 6px;
+}
+
+.subtitle {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  opacity: 0.75;
+  margin: 0 0 24px;
+}
+
+.status {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.trackList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.trackLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: rgba(10, 10, 9, 0.12);
+  border: 1px solid rgba(10, 10, 9, 0.25);
+  color: #2a1c0a;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+.trackLink:hover {
+  background: rgba(10, 10, 9, 0.2);
+}
+
+.backLink {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #2a1c0a;
+  opacity: 0.8;
+}
+
+.errorBox {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #7a1f14;
+  background: rgba(192, 57, 43, 0.14);
+  border: 1px solid rgba(192, 57, 43, 0.4);
+  border-radius: 8px;
+  padding: 12px 16px;
+}

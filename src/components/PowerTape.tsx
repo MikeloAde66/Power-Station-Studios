@@ -92,6 +92,18 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const [flipped, setFlipped] = useState(false);
   const [playlist, setPlaylist] = useState<{ name: string; file: File }[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
+  // Demo gating: the public live site is demo-only (one bundled track, no
+  // upload, no playlist loader) until a purchase unlocks this browser via
+  // the signed cookie set on /download. Defaults to locked so there's no
+  // flash of full controls before the check resolves.
+  const [unlocked, setUnlocked] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/unlock-status')
+      .then((res) => res.json())
+      .then((data) => setUnlocked(Boolean(data?.unlocked)))
+      .catch(() => setUnlocked(false));
+  }, []);
 
   function ensureEngine() {
     if (!engineRef.current) {
@@ -164,9 +176,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     return () => cancelAnimationFrame(raf);
   }, [scale, playlist.length, flipped]);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function loadFile(file: File) {
     setError(null);
     try {
       ensureEngine();
@@ -180,6 +190,28 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       onOpenPreamp?.();
     } catch (err) {
       setError(`Couldn't decode that file: ${(err as Error).message ?? err}`);
+    }
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await loadFile(file);
+  }
+
+  // Demo mode: the public live site runs the one bundled demo track and
+  // nothing a visitor brings themselves — uploading and the playlist loader
+  // are purchase-only. This fetches that one track and runs it through the
+  // exact same load path as a real upload.
+  async function handleLoadDemo() {
+    setError(null);
+    try {
+      const res = await fetch('/demo/demo-track.mp3');
+      if (!res.ok) throw new Error('Demo track unavailable right now.');
+      const blob = await res.blob();
+      await loadFile(new File([blob], 'Power Tape Demo.mp3', { type: 'audio/mpeg' }));
+    } catch (err) {
+      setError((err as Error).message ?? "Couldn't load the demo track.");
     }
   }
 
@@ -474,17 +506,30 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
                   <span className={`${styles.preampDot} ${preampLive ? styles.preampDotOn : styles.preampDotOff}`} />
                   PRE-AMP
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleFile}
-                  className={styles.fileInput}
-                  id="pt-upload"
-                />
-                <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
-                  &rsaquo;&rsaquo;&rsaquo; LOAD
-                </label>
+                {unlocked ? (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFile}
+                      className={styles.fileInput}
+                      id="pt-upload"
+                    />
+                    <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
+                      &rsaquo;&rsaquo;&rsaquo; LOAD
+                    </label>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.uploadBtn}
+                    onClick={handleLoadDemo}
+                    title="Play the free demo track — unlock full upload with purchase"
+                  >
+                    &rsaquo;&rsaquo;&rsaquo; TRY DEMO
+                  </button>
+                )}
               </div>
             </div>
 
@@ -551,18 +596,27 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
             ))}
           </select>
 
-          <input
-            ref={playlistInputRef}
-            type="file"
-            accept="audio/*"
-            multiple
-            onChange={handlePlaylistFiles}
-            className={styles.fileInput}
-            id="pt-playlist"
-          />
-          <label htmlFor="pt-playlist" className={styles.playlistBtn} title="Add up to 15 songs at once">
-            + PLAYLIST
-          </label>
+          {unlocked && (
+            <>
+              <input
+                ref={playlistInputRef}
+                type="file"
+                accept="audio/*"
+                multiple
+                onChange={handlePlaylistFiles}
+                className={styles.fileInput}
+                id="pt-playlist"
+              />
+              <label htmlFor="pt-playlist" className={styles.playlistBtn} title="Add up to 15 songs at once">
+                + PLAYLIST
+              </label>
+            </>
+          )}
+          {!unlocked && (
+            <button type="button" className={styles.playlistBtn} disabled title="Unlock with purchase to batch-load a playlist">
+              + PLAYLIST (LOCKED)
+            </button>
+          )}
 
           <div className={styles.transportGroup}>
             <button
