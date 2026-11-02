@@ -45,11 +45,12 @@
 }
 
 .brass {
-  /* A sharper, hotter specular glint layered over the base ramp reads as
-     machined gold metal rather than a flat painted sphere. */
+  /* A hot, tight specular glint plus a richer highlight-to-bronze ramp —
+     matches the frame's real-gold-metal treatment instead of a flat
+     painted sphere. */
   background:
-    radial-gradient(circle at 27% 20%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 16%),
-    radial-gradient(circle at 32% 28%, #fdf0c0 0%, #e8c15c 30%, #b4872e 60%, #714e18 85%, #4a330e 100%);
+    radial-gradient(circle at 26% 19%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 15%),
+    radial-gradient(circle at 32% 28%, #fdeecb 0%, #f0cd73 24%, #d9a33e 48%, #8a611c 78%, #4a330e 100%);
   border: 4px solid #2e2008;
 }
 
