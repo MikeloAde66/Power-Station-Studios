@@ -820,7 +820,12 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
                         type="button"
                         className={`${styles.uploadBtn} ${styles.saveIconBtn}`}
                         onClick={() => setSaveMenuOpen((v) => !v)}
-                        title="Save this playlist to the cloud, or load one you saved before"
+                        disabled={playlist.length === 0 && savedPlaylists.length === 0}
+                        title={
+                          playlist.length === 0 && savedPlaylists.length === 0
+                            ? 'Load a playlist first to save it'
+                            : 'Save this playlist to the cloud, or load one you saved before'
+                        }
                         aria-label="Save or load playlists"
                       >
                         <SaveIcon />

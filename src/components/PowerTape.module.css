@@ -303,6 +303,12 @@
   justify-content: center;
 }
 
+.saveIconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #1a1403;
+}
+
 .saveMenu {
   position: absolute;
   top: calc(100% + 8px);
