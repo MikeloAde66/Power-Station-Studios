@@ -188,15 +188,48 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
-  // First thing an unlocked engineer should see is a choice, not a wall of
-  // knobs: load a single file or a whole playlist. Derived rather than its
-  // own effect-driven state, so it closes itself the instant something's
-  // actually loaded with no extra render pass, and can still be skipped
-  // outright for someone who just wants to look around first. Locked
-  // (demo) visitors never see this — they have nothing to upload, just the
-  // TRY DEMO button.
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const showOnboarding = !onboardingDismissed && !fileName && playlist.length === 0;
+  // The "LOAD YOUR MUSIC" modal used to pop itself open the instant an
+  // unlocked visitor had nothing loaded yet — which meant it slammed shut
+  // the view before anyone had a chance to hear what the plugin does. Now
+  // it's purely manual: a bundled demo track pre-loads itself (silently,
+  // no autoplay) so there's always something to press Play on first, and
+  // this modal only opens when the visitor asks for it via "LISTEN TO
+  // YOUR SONGS HERE", or automatically once the demo finishes playing.
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  // Whether what's currently loaded is the bundled showcase demo (vs.
+  // something the visitor brought themselves) — decides whether Play runs
+  // the preset-showcase sequence and whether the end-of-song handler
+  // should invite them to upload their own files.
+  const [isDemoTrack, setIsDemoTrack] = useState(false);
+  const demoShowcaseTimeouts = useRef<number[]>([]);
+  const demoAutoLoadedRef = useRef(false);
+
+  function clearDemoShowcase() {
+    demoShowcaseTimeouts.current.forEach((id) => clearTimeout(id));
+    demoShowcaseTimeouts.current = [];
+  }
+
+  // Walks the character through five flavors over ~20s so a first-time
+  // visitor hears what the plugin can do before touching a single knob,
+  // then settles on WARM TAPE — the same default the unit loads with — so
+  // nothing jarring is left engaged once the showcase ends.
+  function runDemoShowcase() {
+    clearDemoShowcase();
+    const sequence: { preset: string; atMs: number }[] = [
+      { preset: 'CLEAN TAPE', atMs: 0 },
+      { preset: 'WARM TAPE', atMs: 4000 },
+      { preset: 'VINTAGE WOBBLE', atMs: 8000 },
+      { preset: 'LO-FI CASSETTE', atMs: 12000 },
+      { preset: 'SOFT LIMITER', atMs: 16000 },
+      { preset: 'WARM TAPE', atMs: 20000 },
+    ];
+    demoShowcaseTimeouts.current = sequence.map(({ preset, atMs }) =>
+      window.setTimeout(() => {
+        const p = PRESETS.find((candidate) => candidate.name === preset);
+        if (p) applyPreset(p);
+      }, atMs)
+    );
+  }
 
   function ensureEngine() {
     if (!engineRef.current) {
@@ -290,6 +323,9 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsDemoTrack(false);
+    clearDemoShowcase();
+    setUploadModalOpen(false);
     await loadFile(file);
   }
 
@@ -304,10 +340,26 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       if (!res.ok) throw new Error('Demo track unavailable right now.');
       const blob = await res.blob();
       await loadFile(new File([blob], 'Power Tape Demo.mp3', { type: 'audio/mpeg' }));
+      setIsDemoTrack(true);
     } catch (err) {
       setError((err as Error).message ?? "Couldn't load the demo track.");
     }
   }
+
+  // Unlocked visitors with nothing loaded yet get the bundled demo
+  // pre-loaded (not playing) instead of a modal shoved in their face — they
+  // can look around, then press Play themselves when ready. Runs once per
+  // mount via the ref guard, not on every render where fileName/playlist
+  // happen to still be empty. handleLoadDemo is intentionally left out of
+  // the deps — it's redefined every render and including it would just
+  // re-fire this on every keystroke elsewhere in the component.
+  useEffect(() => {
+    if (unlocked && !demoAutoLoadedRef.current && !fileName && playlist.length === 0) {
+      demoAutoLoadedRef.current = true;
+      handleLoadDemo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlocked, fileName, playlist.length]);
 
   async function handlePlay() {
     // With a playlist loaded, Play resumes/advances through it — the same
@@ -328,13 +380,21 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       await channel.ctx.resume();
       if (fileName && channel.buffer) {
         const node = startBuffer(channel);
+        const wasDemo = isDemoTrack;
         if (node) {
           node.onended = () => {
             setPlaying(false);
             startCtxTimeRef.current = null;
             setElapsedSec(0);
+            clearDemoShowcase();
+            // Demo's done — this is the moment to invite them to bring
+            // their own files, instead of making them hunt for it.
+            if (wasDemo) setUploadModalOpen(true);
           };
         }
+        // Pressing Play on the bundled demo kicks off the ~20s
+        // preset-showcase alongside it, ending locked on WARM TAPE.
+        if (isDemoTrack) runDemoShowcase();
       } else {
         playTestTone(channel, 165);
       }
@@ -403,6 +463,9 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     let files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     e.target.value = ''; // lets the same files be picked again later
+    setIsDemoTrack(false);
+    clearDemoShowcase();
+    setUploadModalOpen(false);
     // Set after selectTrack runs (below), since selectTrack clears the
     // error banner at its own start — setting this first would just get
     // wiped out immediately by that first-track auto-load.
@@ -500,6 +563,8 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   async function handleLoadSavedPlaylist(record: SavedPlaylistRecord) {
     setCloudBusy(true);
     setError(null);
+    setIsDemoTrack(false);
+    clearDemoShowcase();
     try {
       const files = await Promise.all(
         record.tracks.map(async (t) => {
@@ -558,6 +623,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     setPlaying(false);
     startCtxTimeRef.current = null;
     setElapsedSec(0);
+    clearDemoShowcase();
   }
 
   async function handleMicToggle() {
@@ -660,7 +726,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       className={styles.responsiveStage}
       style={stageHeight != null ? { height: stageHeight } : undefined}
     >
-    {unlocked && showOnboarding && (
+    {unlocked && uploadModalOpen && (
       <div className={styles.onboardBackdrop}>
         <div className={styles.onboardCard}>
           <h2 className={styles.onboardTitle}>LOAD YOUR MUSIC</h2>
@@ -684,7 +750,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
               LOAD A PLAYLIST
             </button>
           </div>
-          <button type="button" className={styles.onboardSkip} onClick={() => setOnboardingDismissed(true)}>
+          <button type="button" className={styles.onboardSkip} onClick={() => setUploadModalOpen(false)}>
             Skip for now
           </button>
         </div>
@@ -741,6 +807,14 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
                       className={styles.fileInput}
                       id="pt-upload"
                     />
+                    <button
+                      type="button"
+                      className={styles.listenBtn}
+                      onClick={() => setUploadModalOpen(true)}
+                      title="Upload or load your own music"
+                    >
+                      LISTEN TO YOUR SONGS HERE
+                    </button>
                     <div className={styles.saveMenuWrap} ref={saveMenuRef}>
                       <button
                         type="button"

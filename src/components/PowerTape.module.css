@@ -461,6 +461,30 @@
   background: rgba(255, 92, 71, 0.12);
 }
 
+/* --- Persistent CTA to (re)open the upload modal: replaces the old
+   auto-popup-on-load — always reachable so a visitor can get to their own
+   files whenever they want, but it never forces itself open. --- */
+
+.listenBtn {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #2a1c0a;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f0cd73 0%, #d9a33e 55%, #a87a28 100%);
+  border: 1px solid #5c4012;
+  cursor: pointer;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.listenBtn:hover {
+  border-color: #fdeecb;
+}
+
 /* --- Hero interaction: one touch engages the signature tape character --- */
 
 .heroEngage {
