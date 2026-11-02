@@ -229,6 +229,11 @@ export default function PowerTape() {
   const outputDb = output <= 0 ? -60 : -60 * (1 - output / 100);
   const spinning = playing || micActive;
 
+  const heroEngaged = activePreset === 'WARM TAPE';
+  function handleHeroEngage() {
+    applyPreset(PRESETS[1]);
+  }
+
   return (
     <div className={styles.frame}>
       <div className={styles.screw} data-pos="tl" />
@@ -237,19 +242,39 @@ export default function PowerTape() {
       <div className={styles.screw} data-pos="br" />
 
       <div className={styles.header}>
-        <div className={styles.wordmark}>POWER TAPE</div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          onChange={handleFile}
-          className={styles.fileInput}
-          id="pt-upload"
-        />
-        <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
-          &rsaquo;&rsaquo;&rsaquo; LOAD
-        </label>
+        <div className={styles.brandBlock}>
+          <div className={styles.wordmark}>POWER TAPE</div>
+          <div className={styles.tagline}>REAL-TIME ANALOG CAPTURE</div>
+        </div>
+        <div className={styles.headerRight}>
+          <div className={styles.lampCluster} title={micActive ? 'Capturing live input' : playing ? 'Playing' : 'Standby'}>
+            <span className={`${styles.lamp} ${styles.lampStandby} ${!playing && !micActive ? styles.lampLit : ''}`} />
+            <span className={`${styles.lamp} ${styles.lampPlay} ${playing ? styles.lampLit : ''}`} />
+            <span className={`${styles.lamp} ${styles.lampCapture} ${micActive ? styles.lampLit : ''}`} />
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*"
+            onChange={handleFile}
+            className={styles.fileInput}
+            id="pt-upload"
+          />
+          <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
+            &rsaquo;&rsaquo;&rsaquo; LOAD
+          </label>
+        </div>
       </div>
+
+      <button
+        type="button"
+        className={`${styles.heroEngage} ${heroEngaged ? styles.heroEngaged : ''}`}
+        onClick={handleHeroEngage}
+        title="Engage the signature Power Tape character"
+      >
+        <span className={styles.heroDot} />
+        <span className={styles.heroLabel}>{heroEngaged ? 'TAPE ENGAGED' : 'ENGAGE TAPE'}</span>
+      </button>
 
       <div className={styles.transportDeck}>
         <div className={`${styles.reel} ${spinning ? styles.spinning : ''}`}>
@@ -288,7 +313,12 @@ export default function PowerTape() {
         </div>
 
         <div className={styles.controlRow}>
-          <select className={styles.presetSelect} value={activePreset ?? ''} onChange={handlePresetSelect}>
+          <select
+            className={styles.presetSelect}
+            value={activePreset ?? ''}
+            onChange={handlePresetSelect}
+            title="More tape character options"
+          >
             {!activePreset && <option value="">CUSTOM</option>}
             {PRESETS.map((p) => (
               <option key={p.name} value={p.name}>
