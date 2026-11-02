@@ -61,7 +61,12 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const engineRef = useRef<TapeEngine | null>(null);
   const rafRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const playlistInputRef = useRef<HTMLInputElement>(null);
   const startCtxTimeRef = useRef<number | null>(null);
+  // Mirrors `playlist` state so the onended auto-advance callback (set up
+  // once per track) always reads the current list instead of a stale one
+  // captured when that callback was created.
+  const playlistRef = useRef<{ name: string; file: File }[]>([]);
 
   const [playing, setPlaying] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -75,6 +80,8 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const [activePreset, setActivePreset] = useState<string | null>('WARM TAPE');
   const [micActive, setMicActive] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const [playlist, setPlaylist] = useState<{ name: string; file: File }[]>([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
 
   function ensureEngine() {
     if (!engineRef.current) {
@@ -136,6 +143,13 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   }
 
   async function handlePlay() {
+    // With a playlist loaded, Play resumes/advances through it — the same
+    // path selectTrack already uses for auto-advance — instead of the
+    // single-file logic below.
+    if (playlist.length > 0 && currentTrackIndex !== null) {
+      await selectTrack(currentTrackIndex, { autoPlay: true });
+      return;
+    }
     setError(null);
     try {
       ensureEngine();
@@ -163,6 +177,96 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     } catch (err) {
       setError(`Playback failed: ${(err as Error).message ?? err}`);
     }
+  }
+
+  // --- Playlist: a batch loader next to the preset select. Each add can
+  // carry up to 15 songs; they append to whatever's already queued. Click
+  // a track to jump to it (keeps playing if something already was); let
+  // one run to the end and the next track picks up automatically. ---
+
+  function appendToPlaylist(files: File[]) {
+    const newItems = files.map((file) => ({ name: file.name, file }));
+    const next = [...playlistRef.current, ...newItems];
+    playlistRef.current = next;
+    setPlaylist(next);
+    return next;
+  }
+
+  async function selectTrack(index: number, opts: { openPreamp?: boolean; autoPlay?: boolean } = {}) {
+    const list = playlistRef.current;
+    if (index < 0 || index >= list.length) return;
+    setError(null);
+    try {
+      ensureEngine();
+      const channel = channelRef.current!;
+      if (micActive) {
+        disconnectMic(channel);
+        setMicActive(false);
+      }
+      stopSource(channel);
+      await channel.ctx.resume();
+      await loadFileIntoEngine(channel, list[index].file);
+      setFileName(list[index].name);
+      setCurrentTrackIndex(index);
+      if (opts.openPreamp) onOpenPreamp?.();
+      if (opts.autoPlay) {
+        const node = startBuffer(channel);
+        if (node) {
+          node.onended = () => {
+            const nextIndex = index + 1;
+            if (nextIndex < playlistRef.current.length) {
+              selectTrack(nextIndex, { autoPlay: true });
+            } else {
+              setPlaying(false);
+              startCtxTimeRef.current = null;
+              setElapsedSec(0);
+            }
+          };
+        }
+        startCtxTimeRef.current = channel.ctx.currentTime;
+        setElapsedSec(0);
+        setPlaying(true);
+      }
+    } catch (err) {
+      setError(`Couldn't load that track: ${(err as Error).message ?? err}`);
+    }
+  }
+
+  async function handlePlaylistFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    let files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    e.target.value = ''; // lets the same files be picked again later
+    if (files.length > 15) {
+      setError(`Only the first 15 of ${files.length} selected songs were added — add the rest in another batch.`);
+      files = files.slice(0, 15);
+    } else {
+      setError(null);
+    }
+    const wasEmpty = playlistRef.current.length === 0;
+    const startIndex = playlistRef.current.length;
+    appendToPlaylist(files);
+    if (wasEmpty) {
+      await selectTrack(startIndex, { openPreamp: true });
+    }
+  }
+
+  function removeTrack(index: number) {
+    const next = playlistRef.current.filter((_, i) => i !== index);
+    playlistRef.current = next;
+    setPlaylist(next);
+    if (currentTrackIndex === index) {
+      setCurrentTrackIndex(null);
+      if (playing) handleStop();
+    } else if (currentTrackIndex !== null && index < currentTrackIndex) {
+      setCurrentTrackIndex(currentTrackIndex - 1);
+    }
+  }
+
+  function clearPlaylist() {
+    playlistRef.current = [];
+    setPlaylist([]);
+    setCurrentTrackIndex(null);
+    if (playing) handleStop();
   }
 
   function handleStop() {
@@ -380,6 +484,19 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
             ))}
           </select>
 
+          <input
+            ref={playlistInputRef}
+            type="file"
+            accept="audio/*"
+            multiple
+            onChange={handlePlaylistFiles}
+            className={styles.fileInput}
+            id="pt-playlist"
+          />
+          <label htmlFor="pt-playlist" className={styles.playlistBtn} title="Add up to 15 songs at once">
+            + PLAYLIST
+          </label>
+
           <div className={styles.transportGroup}>
             <button className={styles.transportBtn} onClick={handlePlay} disabled={playing} title="Play">
               &#9654;
@@ -402,6 +519,42 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
           </div>
         </div>
       </div>
+
+            {playlist.length > 0 && (
+              <div className={styles.playlistPanel}>
+                <div className={styles.playlistHeader}>
+                  <span>
+                    PLAYLIST &mdash; {playlist.length} TRACK{playlist.length === 1 ? '' : 'S'}
+                  </span>
+                  <button type="button" className={styles.playlistClear} onClick={clearPlaylist}>
+                    CLEAR
+                  </button>
+                </div>
+                <div className={styles.playlistList}>
+                  {playlist.map((track, i) => (
+                    <div
+                      key={`${track.name}-${i}`}
+                      className={`${styles.playlistRow} ${i === currentTrackIndex ? styles.playlistRowActive : ''}`}
+                      onClick={() => selectTrack(i, { autoPlay: playing })}
+                    >
+                      <span className={styles.playlistIndex}>{(i + 1).toString().padStart(2, '0')}</span>
+                      <span className={styles.playlistName}>{track.name}</span>
+                      <button
+                        type="button"
+                        className={styles.playlistRemove}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeTrack(i);
+                        }}
+                        title="Remove from playlist"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {error && <div className={styles.error}>{error}</div>}
           </div>
