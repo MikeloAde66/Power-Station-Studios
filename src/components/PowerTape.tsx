@@ -236,11 +236,13 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     let files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     e.target.value = ''; // lets the same files be picked again later
+    // Set after selectTrack runs (below), since selectTrack clears the
+    // error banner at its own start — setting this first would just get
+    // wiped out immediately by that first-track auto-load.
+    let overflowMessage: string | null = null;
     if (files.length > 15) {
-      setError(`Only the first 15 of ${files.length} selected songs were added — add the rest in another batch.`);
+      overflowMessage = `Only the first 15 of ${files.length} selected songs were added — add the rest in another batch.`;
       files = files.slice(0, 15);
-    } else {
-      setError(null);
     }
     const wasEmpty = playlistRef.current.length === 0;
     const startIndex = playlistRef.current.length;
@@ -248,6 +250,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     if (wasEmpty) {
       await selectTrack(startIndex, { openPreamp: true });
     }
+    if (overflowMessage) setError(overflowMessage);
   }
 
   function removeTrack(index: number) {
