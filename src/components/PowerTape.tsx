@@ -333,17 +333,17 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
       <div className={styles.controlPanel}>
         <div className={styles.controlRow}>
-          <VUMeter level01={meter} faceColor="#ead9b0" needleColor="#2a1c0a" scaleColor="#4a3516" width={140} />
-          <Knob label="DRIVE" value={drive} onChange={handleDriveChange} valueLabel={`${drive.toFixed(0)}%`} color="brass" size={66} />
-          <Knob label="WOW/FLUTTER" value={wobble} onChange={handleWobbleChange} valueLabel={`${wobble.toFixed(0)}%`} color="brass" size={66} />
-          <Knob label="NOISE" value={noise} onChange={handleNoiseChange} valueLabel={`${noise.toFixed(0)}%`} color="brass" size={66} />
+          <VUMeter level01={meter} faceColor="#ead9b0" needleColor="#2a1c0a" scaleColor="#4a3516" width={190} />
+          <Knob label="DRIVE" value={drive} onChange={handleDriveChange} valueLabel={`${drive.toFixed(0)}%`} color="brass" size={92} />
+          <Knob label="WOW/FLUTTER" value={wobble} onChange={handleWobbleChange} valueLabel={`${wobble.toFixed(0)}%`} color="brass" size={92} />
+          <Knob label="NOISE" value={noise} onChange={handleNoiseChange} valueLabel={`${noise.toFixed(0)}%`} color="brass" size={92} />
           <Knob
             label="OUTPUT"
             value={output}
             onChange={handleOutputChange}
             valueLabel={outputDb <= -60 ? '-∞' : `${outputDb.toFixed(1)} dB`}
             color="brass"
-            size={66}
+            size={92}
           />
         </div>
 

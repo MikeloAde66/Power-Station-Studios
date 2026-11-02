@@ -6,9 +6,9 @@
 /* --- Flip scene: whole unit rotates to reveal its rear connections --- */
 
 .flipScene {
-  width: 720px;
+  width: 1180px;
   max-width: 100%;
-  perspective: 2400px;
+  perspective: 3200px;
 }
 
 .flipCard {
@@ -116,10 +116,10 @@
 
 .frame {
   position: relative;
-  width: 720px;
+  width: 1180px;
   max-width: 100%;
-  padding: 26px 36px 30px;
-  border-radius: 10px;
+  padding: 40px 54px 48px;
+  border-radius: 14px;
   background:
     radial-gradient(circle at 25% 8%, rgba(255, 255, 255, 0.25), transparent 40%),
     linear-gradient(160deg, #e9dcb8 0%, #d8c89a 30%, #c3af7c 60%, #a9966a 100%);
@@ -186,7 +186,7 @@
 .wordmark {
   font-family: var(--font-display, 'Barlow Condensed', sans-serif);
   font-weight: 700;
-  font-size: 32px;
+  font-size: 46px;
   letter-spacing: 0.08em;
   color: #3a2c12;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
@@ -194,9 +194,9 @@
 
 .tagline {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.24em;
   color: #7a6136;
 }
 
@@ -275,11 +275,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  margin: 2px 0 14px;
-  padding: 11px 0;
-  border-radius: 7px;
+  margin: 6px 0 22px;
+  padding: 16px 0;
+  border-radius: 9px;
   border: 1px solid #2a2008;
   background: linear-gradient(180deg, #6b5833 0%, #4a3c1f 55%, #352a12 100%);
   box-shadow:
@@ -322,7 +322,7 @@
 .heroLabel {
   font-family: var(--font-display, 'Barlow Condensed', sans-serif);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 20px;
   letter-spacing: 0.14em;
   color: #ead9b0;
 }
@@ -331,26 +331,28 @@
   color: #2a1c0a;
 }
 
-/* --- Reel deck: bigger reels, real tape path with a head block --- */
+/* --- Reel deck: the reels are the whole point — they dominate the
+   faceplate, like the real TEAC/Akai decks this is in conversation with,
+   not a small decorative detail above the "real" controls. --- */
 
 .transportDeck {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 6px 0 16px;
+  gap: 18px;
+  padding: 10px 0 26px;
   position: relative;
   z-index: 1;
 }
 
 .reel {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 420px;
+  height: 420px;
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
   animation: reel-spin 3.2s linear infinite;
   animation-play-state: paused;
 }
@@ -375,8 +377,8 @@
 
 .tapePath {
   position: relative;
-  width: 150px;
-  height: 220px;
+  width: 220px;
+  height: 420px;
   flex-shrink: 0;
 }
 
@@ -384,43 +386,43 @@
   position: absolute;
   left: 50%;
   top: 42%;
-  width: 78px;
-  height: 7px;
-  margin-left: -39px;
+  width: 118px;
+  height: 10px;
+  margin-left: -59px;
   background: linear-gradient(90deg, #2a1c0e, #4a3218 50%, #2a1c0e);
-  border-radius: 2px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .tapeStrandLeft {
-  transform: translateX(-46px) rotate(14deg);
+  transform: translateX(-72px) rotate(14deg);
 }
 
 .tapeStrandRight {
-  transform: translateX(46px) rotate(-14deg);
+  transform: translateX(72px) rotate(-14deg);
 }
 
 .headBlock {
   position: absolute;
   left: 50%;
   top: 58%;
-  width: 34px;
-  height: 62px;
-  margin-left: -17px;
-  border-radius: 4px;
+  width: 50px;
+  height: 92px;
+  margin-left: -25px;
+  border-radius: 6px;
   background: linear-gradient(180deg, #4a4a48, #1a1a19 70%);
   border: 1px solid #0a0a0a;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-evenly;
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 .headGap {
-  width: 18px;
-  height: 3px;
+  width: 26px;
+  height: 4px;
   border-radius: 1px;
   background: #0a0a09;
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.8);
@@ -429,8 +431,8 @@
 /* --- Dark control panel: meters, knobs, preset select, transport, counter --- */
 
 .controlPanel {
-  border-radius: 8px;
-  padding: 18px 22px 16px;
+  border-radius: 10px;
+  padding: 26px 34px 24px;
   background:
     repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 3px),
     linear-gradient(180deg, #3a3b3c 0%, #232424 10%, #1c1d1d 60%, #141515 100%);
@@ -459,26 +461,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 22px;
+  gap: 34px;
 }
 
 .controlRow + .controlRow {
-  margin-top: 16px;
+  margin-top: 22px;
 }
 
 .presetSelect {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: #b8ae98;
-  padding: 8px 12px;
-  border-radius: 4px;
+  padding: 11px 16px;
+  border-radius: 5px;
   background: linear-gradient(180deg, #3a3a38, #1c1c1b 85%);
   border: 1px solid #000;
   cursor: pointer;
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.5);
-  min-width: 134px;
+  min-width: 164px;
 }
 
 .presetSelect:hover {
@@ -491,16 +493,16 @@
 }
 
 .transportBtn {
-  width: 42px;
-  height: 36px;
-  border-radius: 4px;
+  width: 54px;
+  height: 46px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(180deg, #3a3c3e, #0f1011 85%);
   border: 1px solid #000;
   color: #ead9b0;
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
@@ -540,15 +542,15 @@
 
 .counterDigits {
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #e8c86a;
   background: #0a0a09;
   border: 1px solid #000;
-  border-radius: 3px;
-  padding: 4px 12px;
-  min-width: 64px;
+  border-radius: 4px;
+  padding: 6px 16px;
+  min-width: 80px;
   text-align: center;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7);
 }
