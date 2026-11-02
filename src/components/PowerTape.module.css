@@ -405,8 +405,8 @@
 
 .reel {
   position: relative;
-  width: 420px;
-  height: 420px;
+  width: 460px;
+  height: 460px;
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
@@ -417,6 +417,18 @@
 
 .reel.spinning {
   animation-play-state: running;
+}
+
+/* Bigger reels, pulled inward by the same amount they grew — the extra
+   size eats straight into the old gap so the reel's edge actually
+   overlaps where the tape strand starts, instead of just sitting bigger
+   next to the same gap. Net row width is unchanged. */
+.transportDeck > .reel:first-of-type {
+  margin-right: -40px;
+}
+
+.transportDeck > .reel:last-of-type {
+  margin-left: -40px;
 }
 
 .reelImg {
@@ -430,8 +442,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 104px;
-  height: 104px;
+  width: 114px;
+  height: 114px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #3a3a38, #0a0a0a 70%);
@@ -456,6 +468,9 @@
   width: 220px;
   height: 420px;
   flex-shrink: 0;
+  /* Sit above both reels so the strands stay visible where the now-
+     overlapping reel edges tuck under them. */
+  z-index: 2;
 }
 
 .tapeStrand {
