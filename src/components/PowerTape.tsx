@@ -26,12 +26,18 @@ import styles from './PowerTape.module.css';
 // they sound like, not borrowed from any real machine or manufacturer.
 type Preset = { name: string; drive: number; wobble: number; noise: number; output: number };
 
+// Output used to taper down with each preset (as low as -15 dB for the
+// default WARM TAPE), which made the instrument sound broken next to any
+// unprocessed reference track played at unity gain. The tape character
+// (drive/wobble/noise) already carries the "vintage" feel on its own, so
+// output now stays at unity across every preset — nothing trims level
+// unless the engineer dials OUTPUT down themselves.
 const PRESETS: Preset[] = [
-  { name: 'CLEAN TAPE', drive: 10, wobble: 5, noise: 5, output: 80 },
-  { name: 'WARM TAPE', drive: 35, wobble: 15, noise: 15, output: 75 },
-  { name: 'VINTAGE WOBBLE', drive: 45, wobble: 55, noise: 25, output: 70 },
-  { name: 'LO-FI CASSETTE', drive: 55, wobble: 40, noise: 45, output: 65 },
-  { name: 'DESTROYED', drive: 85, wobble: 80, noise: 70, output: 55 },
+  { name: 'CLEAN TAPE', drive: 10, wobble: 5, noise: 5, output: 100 },
+  { name: 'WARM TAPE', drive: 35, wobble: 15, noise: 15, output: 100 },
+  { name: 'VINTAGE WOBBLE', drive: 45, wobble: 55, noise: 25, output: 100 },
+  { name: 'LO-FI CASSETTE', drive: 55, wobble: 40, noise: 45, output: 100 },
+  { name: 'DESTROYED', drive: 85, wobble: 80, noise: 70, output: 100 },
 ];
 
 function formatCounter(seconds: number) {
@@ -83,7 +89,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const [drive, setDriveState] = useState(35);
   const [wobble, setWobble] = useState(15);
   const [noise, setNoise] = useState(15);
-  const [output, setOutput] = useState(75);
+  const [output, setOutput] = useState(100);
   const [meter, setMeter] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [error, setError] = useState<string | null>(null);
