@@ -59,6 +59,7 @@ export default function PowerTape() {
   const [error, setError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState<string | null>('WARM TAPE');
   const [micActive, setMicActive] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   function ensureEngine() {
     if (!engineRef.current) {
@@ -234,37 +235,50 @@ export default function PowerTape() {
     applyPreset(PRESETS[1]);
   }
 
-  return (
-    <div className={styles.frame}>
-      <div className={styles.screw} data-pos="tl" />
-      <div className={styles.screw} data-pos="tr" />
-      <div className={styles.screw} data-pos="bl" />
-      <div className={styles.screw} data-pos="br" />
+  const liveState = micActive ? 'Capturing live input (LIVE)' : playing ? 'Playing' : 'Standby';
 
-      <div className={styles.header}>
-        <div className={styles.brandBlock}>
-          <div className={styles.wordmark}>POWER TAPE</div>
-          <div className={styles.tagline}>REAL-TIME ANALOG CAPTURE</div>
-        </div>
-        <div className={styles.headerRight}>
-          <div className={styles.lampCluster} title={micActive ? 'Capturing live input' : playing ? 'Playing' : 'Standby'}>
-            <span className={`${styles.lamp} ${styles.lampStandby} ${!playing && !micActive ? styles.lampLit : ''}`} />
-            <span className={`${styles.lamp} ${styles.lampPlay} ${playing ? styles.lampLit : ''}`} />
-            <span className={`${styles.lamp} ${styles.lampCapture} ${micActive ? styles.lampLit : ''}`} />
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            onChange={handleFile}
-            className={styles.fileInput}
-            id="pt-upload"
-          />
-          <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
-            &rsaquo;&rsaquo;&rsaquo; LOAD
-          </label>
-        </div>
-      </div>
+  return (
+    <div className={styles.flipScene}>
+      <div className={`${styles.flipCard} ${flipped ? styles.flipped : ''}`}>
+        <div className={`${styles.cardFace} ${styles.cardFront}`}>
+          <div className={styles.frame}>
+            <div className={styles.screw} data-pos="tl" />
+            <div className={styles.screw} data-pos="tr" />
+            <div className={styles.screw} data-pos="bl" />
+            <div className={styles.screw} data-pos="br" />
+
+            <div className={styles.header}>
+              <div className={styles.brandBlock}>
+                <div className={styles.wordmark}>POWER TAPE</div>
+                <div className={styles.tagline}>REAL-TIME ANALOG CAPTURE</div>
+              </div>
+              <div className={styles.headerRight}>
+                <div className={styles.lampCluster} title={liveState}>
+                  <span className={`${styles.lamp} ${styles.lampStandby} ${!playing && !micActive ? styles.lampLit : ''}`} />
+                  <span className={`${styles.lamp} ${styles.lampPlay} ${playing ? styles.lampLit : ''}`} title="Green = live" />
+                  <span className={`${styles.lamp} ${styles.lampCapture} ${micActive ? styles.lampLit : ''}`} />
+                </div>
+                <button
+                  type="button"
+                  className={styles.flipBtn}
+                  onClick={() => setFlipped(true)}
+                  title="View connections"
+                >
+                  &#8635;
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFile}
+                  className={styles.fileInput}
+                  id="pt-upload"
+                />
+                <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
+                  &rsaquo;&rsaquo;&rsaquo; LOAD
+                </label>
+              </div>
+            </div>
 
       <button
         type="button"
@@ -350,7 +364,67 @@ export default function PowerTape() {
         </div>
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+            {error && <div className={styles.error}>{error}</div>}
+          </div>
+        </div>
+
+        <div className={`${styles.cardFace} ${styles.cardBack}`}>
+          <div className={styles.backFrame}>
+            <div className={styles.screw} data-pos="tl" />
+            <div className={styles.screw} data-pos="tr" />
+            <div className={styles.screw} data-pos="bl" />
+            <div className={styles.screw} data-pos="br" />
+
+            <div className={styles.backHeader}>
+              <div>
+                <div className={styles.backWordmark}>POWER TAPE</div>
+                <div className={styles.backModel}>MODEL PT-1 &middot; STANDALONE UNIT</div>
+              </div>
+              <button type="button" className={styles.flipBtn} onClick={() => setFlipped(false)} title="Back to front">
+                &#8635;
+              </button>
+            </div>
+
+            <div className={styles.jackBank}>
+              <div className={styles.jackUnit}>
+                <div className={styles.xlrJack}>
+                  <span className={styles.xlrPin} />
+                  <span className={styles.xlrPin} />
+                  <span className={styles.xlrPin} />
+                </div>
+                <span className={styles.backJackLabel}>MIC IN</span>
+              </div>
+              <div className={styles.jackUnit}>
+                <div className={styles.trsJack} />
+                <span className={styles.backJackLabel}>LINE OUT</span>
+              </div>
+              <div className={styles.jackUnit}>
+                <div className={styles.powerInlet}>
+                  <span className={styles.powerPin} />
+                  <span className={styles.powerPin} />
+                  <span className={styles.powerPin} />
+                </div>
+                <span className={styles.backJackLabel}>POWER</span>
+              </div>
+            </div>
+
+            <div className={styles.backSwitchRow}>
+              <div className={styles.rockerSwitch}>
+                <div className={styles.rockerKnob} />
+              </div>
+              <span className={styles.backJackLabel}>GND LIFT</span>
+            </div>
+
+            <div className={styles.backSpec}>
+              FRONT PANEL LAMP &mdash; GREEN = LIVE SIGNAL
+              <br />
+              HANDBUILT CHARACTER &middot; NO CHAINING REQUIRED
+            </div>
+
+            <div className={styles.backSerial}>SER. PT-000001</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
