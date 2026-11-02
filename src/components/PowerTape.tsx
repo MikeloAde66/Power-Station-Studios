@@ -41,7 +41,19 @@ function formatCounter(seconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function PowerTape() {
+type PowerTapeProps = {
+  // Called when the PRE-AMP button is clicked, so the page can open Power
+  // Mix One as an overlay. Tape stays the thing people see by default; the
+  // preamp is a deliberate, on-demand visit, not a second module competing
+  // for attention on the same page.
+  onOpenPreamp?: () => void;
+  // Whether the preamp is currently engaged (live), reported back up from
+  // Power Mix One so this unit's own PRE-AMP button can carry the same
+  // green/red state language as the rest of the panel.
+  preampLive?: boolean;
+};
+
+export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTapeProps) {
   const busRef = useRef<MasterBus | null>(null);
   const engineRef = useRef<TapeEngine | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -265,6 +277,15 @@ export default function PowerTape() {
                   title="View connections"
                 >
                   &#8635;
+                </button>
+                <button
+                  type="button"
+                  className={styles.preampBtn}
+                  onClick={onOpenPreamp}
+                  title={preampLive ? 'Open the preamp (live)' : 'Open the preamp'}
+                >
+                  <span className={`${styles.preampDot} ${preampLive ? styles.preampDotOn : styles.preampDotOff}`} />
+                  PRE-AMP
                 </button>
                 <input
                   ref={fileInputRef}

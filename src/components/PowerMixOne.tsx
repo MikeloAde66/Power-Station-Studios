@@ -46,7 +46,21 @@ function outputDbToSlider(db: number) {
   return Math.min(100, Math.max(0, 100 * (1 + db / 60)));
 }
 
-export default function PowerMixOne() {
+type PowerMixOneProps = {
+  // When true, the unit renders as a centered overlay (backdrop + close
+  // button) instead of an inline block, controlled by `open`. It stays
+  // mounted either way — only hidden with CSS — so its engine, knob
+  // positions and live state survive being closed and reopened.
+  asModal?: boolean;
+  open?: boolean;
+  onClose?: () => void;
+  // Fires whenever the live-signal state changes, so a parent (Power Tape's
+  // PRE-AMP button) can show its own green/red status light without
+  // reaching into this component's internals.
+  onLiveChange?: (live: boolean) => void;
+};
+
+export default function PowerMixOne({ asModal = false, open = true, onClose, onLiveChange }: PowerMixOneProps) {
   const busRef = useRef<MasterBus | null>(null);
   const engineRef = useRef<ChannelEngine | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -170,6 +184,14 @@ export default function PowerMixOne() {
     };
   }, []);
 
+  // Report live state up to whoever's hosting this (Power Tape's PRE-AMP
+  // light) any time it changes, from any source — preset engage, the mic
+  // button, or an error that knocked it back off.
+  useEffect(() => {
+    onLiveChange?.(micActive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [micActive]);
+
   function handleDriveChange(v: number) {
     setDriveState(v);
     setActivePreset(null);
@@ -182,16 +204,48 @@ export default function PowerMixOne() {
     if (engineRef.current) setChannelLevel(engineRef.current, v / 100);
   }
 
-  function applyPreset(preset: Preset) {
+  // Picking a preset is the "turn the preamp on" gesture — most engineers
+  // dial in a character once (e.g. TRACKING) and never touch it again, so
+  // selecting one both sets the sound AND engages live input monitoring.
+  // Clicking the already-active preset again is the off switch: the light
+  // goes from green to red and monitoring stops, same knob settings held
+  // underneath for whenever it's turned back on.
+  async function applyPreset(preset: Preset) {
+    setError(null);
+    const engine = ensureEngine();
+
+    if (activePreset === preset.name && micActive) {
+      disconnectMic(engine);
+      setMicActive(false);
+      return;
+    }
+
     const driveSlider = driveDbToSlider(preset.driveDb);
     const outputSlider = outputDbToSlider(preset.outputDb);
     setDriveState(driveSlider);
     setLevelState(outputSlider);
     setActivePreset(preset.name);
-    const engine = engineRef.current;
-    if (engine) {
-      setDrive(engine, driveSlider / 100);
-      setChannelLevel(engine, outputSlider / 100);
+    setDrive(engine, driveSlider / 100);
+    setChannelLevel(engine, outputSlider / 100);
+
+    if (!micActive) {
+      try {
+        stopSource(engine);
+        setPlaying(false);
+        await engine.ctx.resume();
+        await connectMic(engine);
+        setMicActive(true);
+      } catch (err) {
+        setMicActive(false);
+        const name = (err as Error)?.name;
+        if (name === 'NotAllowedError') {
+          setError('Mic access was blocked — allow microphone permission for this site and try again.');
+        } else if (name === 'NotFoundError') {
+          setError("No microphone found — check your Scarlett 2i2 is connected and selected as the input.");
+        } else {
+          setError(`Mic input failed: ${(err as Error)?.message ?? err}`);
+        }
+      }
     }
   }
 
@@ -199,7 +253,7 @@ export default function PowerMixOne() {
   const levelDb = level <= 0 ? -60 : -60 * (1 - level / 100);
   const meterPct = Math.min(1, meter * 2.4) * 100;
 
-  return (
+  const unit = (
     <div className={styles.frame}>
       <div className={styles.rivet} data-pos="tl" />
       <div className={styles.rivet} data-pos="tr" />
@@ -207,8 +261,19 @@ export default function PowerMixOne() {
       <div className={styles.rivet} data-pos="br" />
 
       <div className={styles.header}>
-        <div className={styles.wordmark}>POWER MIX ONE</div>
+        <div className={styles.headerLeft}>
+          <div className={styles.wordmark}>POWER MIX ONE</div>
+          <div className={styles.liveLamp} title={micActive ? 'Live' : 'Off'}>
+            <span className={`${styles.liveDot} ${micActive ? styles.liveDotOn : styles.liveDotOff}`} />
+            <span className={styles.liveLabel}>{micActive ? 'LIVE' : 'OFF'}</span>
+          </div>
+        </div>
         <div className={styles.transportMini}>
+          {asModal && (
+            <button className={styles.iconBtn} onClick={onClose} title="Close">
+              &#10005;
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -273,6 +338,19 @@ export default function PowerMixOne() {
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
+    </div>
+  );
+
+  if (!asModal) return unit;
+
+  return (
+    <div
+      className={`${styles.modalBackdrop} ${open ? styles.modalBackdropOpen : ''}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className={styles.modalShell}>{unit}</div>
     </div>
   );
 }
