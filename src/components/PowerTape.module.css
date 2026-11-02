@@ -287,6 +287,170 @@
   border-color: #c6453a;
 }
 
+/* --- SAVE: dropdown for naming and recalling cloud-saved playlists --- */
+
+.saveMenuWrap {
+  position: relative;
+}
+
+.saveMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  z-index: 70;
+  padding: 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2a2b2c 0%, #1a1b1b 60%, #121212 100%);
+  border: 1px solid #000;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+}
+
+.saveMenuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ead9b0;
+  padding: 9px 10px;
+  border-radius: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.saveMenuItem:hover:not(:disabled) {
+  background: rgba(217, 166, 58, 0.14);
+}
+
+.saveMenuItem:disabled {
+  color: #5c584e;
+  cursor: not-allowed;
+}
+
+.saveAsRow {
+  display: flex;
+  gap: 6px;
+  padding: 4px 2px 6px;
+}
+
+.saveAsInput {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: #ead9b0;
+  background: #0a0a09;
+  border: 1px solid #3a3a38;
+  border-radius: 4px;
+  padding: 8px 9px;
+}
+
+.saveAsInput:focus {
+  outline: none;
+  border-color: #d9a63a;
+}
+
+.saveAsConfirm {
+  flex-shrink: 0;
+  width: 32px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #f0cd73 0%, #d9a33e 55%, #a87a28 100%);
+  border: 1px solid #5c4012;
+  color: #2a1c0a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saveAsConfirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saveMenuDivider {
+  height: 1px;
+  margin: 6px 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.saveMenuEmpty {
+  padding: 8px 10px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10.5px;
+  color: #7a7468;
+  text-align: center;
+}
+
+.saveMenuList {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.saveMenuRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.saveMenuRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.saveMenuRowActive {
+  background: rgba(68, 170, 255, 0.12);
+}
+
+.saveMenuRowActive:hover {
+  background: rgba(68, 170, 255, 0.18);
+}
+
+.saveMenuRowName {
+  flex: 1;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11.5px;
+  color: #d8d0ba;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saveMenuRowCount {
+  flex-shrink: 0;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  color: #6a6458;
+}
+
+.saveMenuRowDelete {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #6a6458;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.saveMenuRowDelete:hover {
+  color: #ff5c47;
+  background: rgba(255, 92, 71, 0.12);
+}
+
 /* --- Hero interaction: one touch engages the signature tape character --- */
 
 .heroEngage {

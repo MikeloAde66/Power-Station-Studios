@@ -46,6 +46,31 @@ const PRESETS: Preset[] = [
   { name: 'SOFT LIMITER', drive: 45, wobble: 0, noise: 0, output: 100 },
 ];
 
+// Cloud-saved playlist shapes, mirroring the server's src/lib/playlistStorage.ts.
+type SavedTrack = { name: string; type: string; url: string; pathname: string };
+type SavedPlaylistRecord = { id: string; name: string; updatedAt: number; tracks: SavedTrack[] };
+
+function SaveIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'inline-block', verticalAlign: '-1px', marginRight: 5 }}
+      aria-hidden="true"
+    >
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M17 21v-8H7v8" />
+      <path d="M7 3v5h8" />
+    </svg>
+  );
+}
+
 function formatCounter(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -110,11 +135,57 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   // flash of full controls before the check resolves.
   const [unlocked, setUnlocked] = useState(false);
 
+  // Cloud-saved playlists (see src/lib/playlistStorage.ts): one shared
+  // library behind the same purchase-unlock gate as the rest of the app,
+  // no separate login. currentPlaylistId/Name track which saved playlist
+  // (if any) is currently loaded, so a plain "Save" knows what to overwrite.
+  const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylistRecord[]>([]);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<string | null>(null);
+  const [currentPlaylistName, setCurrentPlaylistName] = useState<string | null>(null);
+  const [savingAsOpen, setSavingAsOpen] = useState(false);
+  const [savingAsDraft, setSavingAsDraft] = useState('');
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const saveMenuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetch('/api/unlock-status')
       .then((res) => res.json())
       .then((data) => setUnlocked(Boolean(data?.unlocked)))
       .catch(() => setUnlocked(false));
+  }, []);
+
+  async function refreshSavedPlaylists() {
+    try {
+      const res = await fetch('/api/playlists');
+      if (!res.ok) return;
+      const data = await res.json();
+      setSavedPlaylists(Array.isArray(data?.playlists) ? data.playlists : []);
+    } catch {
+      // Saved-playlist list is a convenience, not critical path — fail quiet.
+    }
+  }
+
+  useEffect(() => {
+    // Fetching the saved-playlist list on unlock is exactly what an effect
+    // is for (syncing with an external system on a prop/state change) —
+    // the lint rule's static analysis just can't see past the async
+    // function call to know the setState inside it happens post-await.
+    if (unlocked) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      refreshSavedPlaylists();
+    }
+  }, [unlocked]);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (saveMenuRef.current && !saveMenuRef.current.contains(e.target as Node)) {
+        setSaveMenuOpen(false);
+        setSavingAsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
   // First thing an unlocked engineer should see is a choice, not a wall of
@@ -365,7 +436,108 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     playlistRef.current = [];
     setPlaylist([]);
     setCurrentTrackIndex(null);
+    setCurrentPlaylistId(null);
+    setCurrentPlaylistName(null);
     if (playing) handleStop();
+  }
+
+  // --- Cloud playlist save/load: the actual audio for the currently
+  // loaded playlist gets uploaded to Blob storage under a name, and comes
+  // back later as a one-click load — no re-picking files from Finder. ---
+
+  async function persistPlaylist(id: string, name: string) {
+    if (playlist.length === 0) {
+      setError('Load some tracks before saving a playlist.');
+      return;
+    }
+    setCloudBusy(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.set('id', id);
+      form.set('name', name);
+      playlist.forEach((track) => form.append('files', track.file, track.name));
+      const res = await fetch('/api/playlists', { method: 'POST', body: form });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Save failed');
+      }
+      const data = await res.json();
+      setCurrentPlaylistId(data.playlist.id);
+      setCurrentPlaylistName(data.playlist.name);
+      await refreshSavedPlaylists();
+    } catch (err) {
+      setError(`Couldn't save the playlist: ${(err as Error).message ?? err}`);
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function handleSaveClick() {
+    if (currentPlaylistId && currentPlaylistName) {
+      await persistPlaylist(currentPlaylistId, currentPlaylistName);
+      setSaveMenuOpen(false);
+    } else {
+      setSavingAsDraft('');
+      setSavingAsOpen(true);
+    }
+  }
+
+  function handleSaveAsClick() {
+    setSavingAsDraft(currentPlaylistName ?? '');
+    setSavingAsOpen(true);
+  }
+
+  async function confirmSaveAs() {
+    const name = savingAsDraft.trim();
+    if (!name) return;
+    const id = crypto.randomUUID();
+    await persistPlaylist(id, name);
+    setSavingAsOpen(false);
+    setSaveMenuOpen(false);
+  }
+
+  async function handleLoadSavedPlaylist(record: SavedPlaylistRecord) {
+    setCloudBusy(true);
+    setError(null);
+    try {
+      const files = await Promise.all(
+        record.tracks.map(async (t) => {
+          const res = await fetch(t.url);
+          if (!res.ok) throw new Error(`Couldn't fetch "${t.name}"`);
+          const blob = await res.blob();
+          return new File([blob], t.name, { type: t.type || blob.type });
+        })
+      );
+      clearPlaylist();
+      ensureEngine();
+      appendToPlaylist(files);
+      setCurrentPlaylistId(record.id);
+      setCurrentPlaylistName(record.name);
+      await selectTrack(0);
+      setSaveMenuOpen(false);
+    } catch (err) {
+      setError(`Couldn't load that playlist: ${(err as Error).message ?? err}`);
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function handleDeleteSavedPlaylist(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setCloudBusy(true);
+    try {
+      await fetch(`/api/playlists/${id}`, { method: 'DELETE' });
+      if (currentPlaylistId === id) {
+        setCurrentPlaylistId(null);
+        setCurrentPlaylistName(null);
+      }
+      await refreshSavedPlaylists();
+    } catch {
+      setError("Couldn't delete that saved playlist.");
+    } finally {
+      setCloudBusy(false);
+    }
   }
 
   // << / >> step one track at a time through the playlist — keeps playing
@@ -569,9 +741,86 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
                       className={styles.fileInput}
                       id="pt-upload"
                     />
-                    <label htmlFor="pt-upload" className={styles.uploadBtn} title="Load audio">
-                      &rsaquo;&rsaquo;&rsaquo; LOAD
-                    </label>
+                    <div className={styles.saveMenuWrap} ref={saveMenuRef}>
+                      <button
+                        type="button"
+                        className={styles.uploadBtn}
+                        onClick={() => setSaveMenuOpen((v) => !v)}
+                        title="Save this playlist to the cloud, or load one you saved before"
+                      >
+                        <SaveIcon /> SAVE
+                      </button>
+                      {saveMenuOpen && (
+                        <div className={styles.saveMenu}>
+                          <button
+                            type="button"
+                            className={styles.saveMenuItem}
+                            onClick={handleSaveClick}
+                            disabled={playlist.length === 0 || cloudBusy}
+                          >
+                            {currentPlaylistName ? `Save "${currentPlaylistName}"` : 'Save'}
+                          </button>
+                          {savingAsOpen ? (
+                            <div className={styles.saveAsRow}>
+                              <input
+                                autoFocus
+                                className={styles.saveAsInput}
+                                placeholder="Playlist name"
+                                value={savingAsDraft}
+                                onChange={(e) => setSavingAsDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') confirmSaveAs();
+                                  if (e.key === 'Escape') setSavingAsOpen(false);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className={styles.saveAsConfirm}
+                                onClick={confirmSaveAs}
+                                disabled={!savingAsDraft.trim() || cloudBusy}
+                                title="Confirm"
+                              >
+                                &#10003;
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.saveMenuItem}
+                              onClick={handleSaveAsClick}
+                              disabled={playlist.length === 0 || cloudBusy}
+                            >
+                              Save As&hellip;
+                            </button>
+                          )}
+                          <div className={styles.saveMenuDivider} />
+                          {savedPlaylists.length === 0 ? (
+                            <div className={styles.saveMenuEmpty}>No saved playlists yet</div>
+                          ) : (
+                            <div className={styles.saveMenuList}>
+                              {savedPlaylists.map((p) => (
+                                <div
+                                  key={p.id}
+                                  className={`${styles.saveMenuRow} ${p.id === currentPlaylistId ? styles.saveMenuRowActive : ''}`}
+                                  onClick={() => handleLoadSavedPlaylist(p)}
+                                >
+                                  <span className={styles.saveMenuRowName}>{p.name}</span>
+                                  <span className={styles.saveMenuRowCount}>{p.tracks.length}</span>
+                                  <button
+                                    type="button"
+                                    className={styles.saveMenuRowDelete}
+                                    onClick={(e) => handleDeleteSavedPlaylist(p.id, e)}
+                                    title="Delete this saved playlist"
+                                  >
+                                    &times;
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <button
