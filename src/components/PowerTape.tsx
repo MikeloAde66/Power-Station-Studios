@@ -53,15 +53,15 @@ type SavedPlaylistRecord = { id: string; name: string; updatedAt: number; tracks
 function SaveIcon() {
   return (
     <svg
-      width="12"
-      height="12"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ display: 'inline-block', verticalAlign: '-1px', marginRight: 5 }}
+      style={{ display: 'block' }}
       aria-hidden="true"
     >
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
@@ -744,11 +744,12 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
                     <div className={styles.saveMenuWrap} ref={saveMenuRef}>
                       <button
                         type="button"
-                        className={styles.uploadBtn}
+                        className={`${styles.uploadBtn} ${styles.saveIconBtn}`}
                         onClick={() => setSaveMenuOpen((v) => !v)}
                         title="Save this playlist to the cloud, or load one you saved before"
+                        aria-label="Save or load playlists"
                       >
-                        <SaveIcon /> SAVE
+                        <SaveIcon />
                       </button>
                       {saveMenuOpen && (
                         <div className={styles.saveMenu}>
