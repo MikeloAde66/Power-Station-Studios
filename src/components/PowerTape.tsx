@@ -272,6 +272,18 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     if (playing) handleStop();
   }
 
+  // << / >> step one track at a time through the playlist — keeps playing
+  // if something already was, otherwise just loads the new track.
+  function handlePrevTrack() {
+    if (currentTrackIndex === null || currentTrackIndex <= 0) return;
+    selectTrack(currentTrackIndex - 1, { autoPlay: playing });
+  }
+
+  function handleNextTrack() {
+    if (currentTrackIndex === null || currentTrackIndex >= playlist.length - 1) return;
+    selectTrack(currentTrackIndex + 1, { autoPlay: playing });
+  }
+
   function handleStop() {
     const channel = channelRef.current;
     if (channel) stopSource(channel);
@@ -439,6 +451,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       <div className={styles.transportDeck}>
         <div className={`${styles.reel} ${spinning ? styles.spinning : ''}`}>
           <Image src="/tape/reel-full.png" alt="" fill sizes="220px" className={styles.reelImg} priority />
+          <div className={styles.reelHub} />
         </div>
 
         <div className={styles.tapePath}>
@@ -453,6 +466,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
         <div className={`${styles.reel} ${spinning ? styles.spinning : ''}`}>
           <Image src="/tape/reel-takeup-v2.png" alt="" fill sizes="220px" className={styles.reelImg} priority />
+          <div className={styles.reelHub} />
         </div>
       </div>
 
@@ -501,6 +515,14 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
           </label>
 
           <div className={styles.transportGroup}>
+            <button
+              className={styles.transportBtn}
+              onClick={handlePrevTrack}
+              disabled={currentTrackIndex === null || currentTrackIndex <= 0}
+              title="Previous track"
+            >
+              &#9664;&#9664;
+            </button>
             <button className={styles.transportBtn} onClick={handlePlay} disabled={playing} title="Play">
               &#9654;
             </button>
@@ -513,6 +535,14 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
               title={micActive ? 'Stop live mic monitoring' : 'Monitor live mic input'}
             >
               &#9679;
+            </button>
+            <button
+              className={styles.transportBtn}
+              onClick={handleNextTrack}
+              disabled={currentTrackIndex === null || currentTrackIndex >= playlist.length - 1}
+              title="Next track"
+            >
+              &#9654;&#9654;
             </button>
           </div>
 

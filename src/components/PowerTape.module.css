@@ -424,6 +424,24 @@
   transform: scale(1.18);
 }
 
+/* Black center hub — real reel-to-reel decks have a dark metal cap at the
+   hub, not the bright reflective disc the raw photo assets show. */
+.reelHub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 104px;
+  height: 104px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a3a38, #0a0a0a 70%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
 @keyframes reel-spin {
   from {
     transform: rotate(0deg);
@@ -441,23 +459,28 @@
 }
 
 .tapeStrand {
+  /* Anchored at the reel-height edge of the path and rotated to land
+     exactly on the head block's top corner, so the tape reads as one
+     continuous run from reel to reel instead of two floating dashes. */
   position: absolute;
-  left: 50%;
-  top: 42%;
-  width: 118px;
+  top: 205px;
+  width: 92px;
   height: 10px;
-  margin-left: -59px;
   background: linear-gradient(90deg, #2a1c0e, #4a3218 50%, #2a1c0e);
   border-radius: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .tapeStrandLeft {
-  transform: translateX(-72px) rotate(14deg);
+  left: 0;
+  transform-origin: 0% 50%;
+  transform: rotate(21.5deg);
 }
 
 .tapeStrandRight {
-  transform: translateX(72px) rotate(-14deg);
+  right: 0;
+  transform-origin: 100% 50%;
+  transform: rotate(-21.5deg);
 }
 
 .headBlock {
