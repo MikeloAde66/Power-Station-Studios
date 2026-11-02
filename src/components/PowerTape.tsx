@@ -259,6 +259,14 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
   const liveState = micActive ? 'Capturing live input (LIVE)' : playing ? 'Playing' : 'Standby';
 
+  // The hero bar doubles as a metadata feed: once something is actually
+  // sounding, it shows what — the loaded file's name, or LIVE INPUT for
+  // the mic — lit for as long as it's playing. Nothing loaded/playing
+  // means no label at all, just the bare dot.
+  const feedText = micActive ? 'LIVE INPUT' : fileName ? fileName.replace(/\.[^/.]+$/, '').toUpperCase() : null;
+  const feedLive = playing || micActive;
+  const feedColorClass = feedLive ? (micActive ? styles.feedGreen : styles.feedBlue) : '';
+
   return (
     <div className={styles.flipScene}>
       <div className={`${styles.flipCard} ${flipped ? styles.flipped : ''}`}>
@@ -313,12 +321,12 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
       <button
         type="button"
-        className={`${styles.heroEngage} ${heroEngaged ? styles.heroEngaged : ''}`}
+        className={`${styles.heroEngage} ${heroEngaged ? styles.heroEngaged : ''} ${feedColorClass}`}
         onClick={handleHeroEngage}
-        title="Engage the signature Power Tape character"
+        title={feedText ?? 'Engage the signature Power Tape character'}
       >
         <span className={styles.heroDot} />
-        <span className={styles.heroLabel}>{heroEngaged ? 'TAPE ENGAGED' : 'ENGAGE TAPE'}</span>
+        {feedText && <span className={styles.heroLabel}>{feedText}</span>}
       </button>
 
       <div className={styles.transportDeck}>
@@ -343,7 +351,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
       <div className={styles.controlPanel}>
         <div className={styles.controlRow}>
-          <VUMeter level01={meter} faceColor="#ead9b0" needleColor="#2a1c0a" scaleColor="#4a3516" width={190} />
+          <VUMeter level01={meter} faceColor="#f5e9c4" needleColor="#2a1c0a" scaleColor="#3a2810" width={190} />
           <Knob label="DRIVE" value={drive} onChange={handleDriveChange} valueLabel={`${drive.toFixed(0)}%`} color="brass" size={92} />
           <Knob label="WOW/FLUTTER" value={wobble} onChange={handleWobbleChange} valueLabel={`${wobble.toFixed(0)}%`} color="brass" size={92} />
           <Knob label="NOISE" value={noise} onChange={handleNoiseChange} valueLabel={`${noise.toFixed(0)}%`} color="brass" size={92} />

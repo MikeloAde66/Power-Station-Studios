@@ -120,14 +120,18 @@
   max-width: 100%;
   padding: 40px 54px 48px;
   border-radius: 14px;
+  /* Brushed gold metal: a fine diagonal brush texture under a bright
+     specular band and a deeper, richer gold ramp than the old flat
+     cream — reads as machined metal, not painted cream plastic. */
   background:
-    radial-gradient(circle at 25% 8%, rgba(255, 255, 255, 0.25), transparent 40%),
-    linear-gradient(160deg, #e9dcb8 0%, #d8c89a 30%, #c3af7c 60%, #a9966a 100%);
-  border: 3px solid #4a3a1e;
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0px, rgba(255, 255, 255, 0.07) 1px, transparent 1px, transparent 3px),
+    radial-gradient(circle at 22% 6%, rgba(255, 255, 255, 0.55), transparent 42%),
+    linear-gradient(160deg, #f6e3a0 0%, #e8c66a 22%, #c89a3e 48%, #a87a28 72%, #7a5a1c 100%);
+  border: 3px solid #3a2a0e;
   box-shadow:
     0 22px 50px rgba(0, 0, 0, 0.5),
-    inset 0 2px 1px rgba(255, 255, 255, 0.4),
-    inset 0 -3px 10px rgba(80, 60, 20, 0.35);
+    inset 0 2px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -3px 10px rgba(70, 50, 15, 0.4);
 }
 
 .screw {
@@ -188,8 +192,12 @@
   font-weight: 700;
   font-size: 46px;
   letter-spacing: 0.08em;
-  color: #3a2c12;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  /* Chrome-black engraved plate, set against the gold chassis. */
+  background: linear-gradient(180deg, #5a5a5a 0%, #141414 42%, #000 55%, #2e2e2e 75%, #050505 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.4));
 }
 
 .tagline {
@@ -323,12 +331,59 @@
   font-family: var(--font-display, 'Barlow Condensed', sans-serif);
   font-weight: 700;
   font-size: 20px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   color: #ead9b0;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .heroEngaged .heroLabel {
   color: #2a1c0a;
+}
+
+/* --- Metadata feed: once something is actually sounding, the bar lights
+   up with what's playing — the loaded file's name, or LIVE INPUT for the
+   mic — and stays lit for as long as it runs. Takes priority over the
+   plain "engaged" amber glow, since this is live, current information. --- */
+
+.heroEngage.feedBlue {
+  background: linear-gradient(180deg, #1f4260 0%, #17354e 55%, #0e2436 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.35),
+    0 0 20px 3px rgba(68, 170, 255, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.feedBlue .heroDot {
+  background: #7ccaff;
+  box-shadow: 0 0 8px 3px rgba(124, 202, 255, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+.feedBlue .heroLabel {
+  color: #cfeeff;
+  text-shadow: 0 0 10px rgba(124, 202, 255, 0.85), 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.heroEngage.feedGreen {
+  background: linear-gradient(180deg, #1c4a2a 0%, #163d22 55%, #0d2815 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.35),
+    0 0 20px 3px rgba(80, 224, 130, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.feedGreen .heroDot {
+  background: #6ff09a;
+  box-shadow: 0 0 8px 3px rgba(111, 240, 154, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+.feedGreen .heroLabel {
+  color: #c8f9d8;
+  text-shadow: 0 0 10px rgba(111, 240, 154, 0.85), 0 0 2px rgba(255, 255, 255, 0.5);
 }
 
 /* --- Reel deck: the reels are the whole point — they dominate the

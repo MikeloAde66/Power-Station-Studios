@@ -62,9 +62,11 @@ export default function VUMeter({
         width,
         height,
         borderRadius: '6px',
-        background: `radial-gradient(circle at 50% 110%, ${faceColor} 0%, ${faceColor} 55%, rgba(0,0,0,0.18) 100%)`,
+        // A soft highlight near the top simulates backlighting — the face
+        // reads as lit glass, not a flat printed card.
+        background: `radial-gradient(circle at 50% 8%, rgba(255,255,255,0.45), transparent 55%), radial-gradient(circle at 50% 110%, ${faceColor} 0%, ${faceColor} 55%, rgba(0,0,0,0.18) 100%)`,
         border: '2px solid #141414',
-        boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.4), 0 3px 10px rgba(0,0,0,0.55)',
+        boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3), 0 3px 10px rgba(0,0,0,0.55)',
         overflow: 'hidden',
       }}
     >
@@ -81,10 +83,14 @@ export default function VUMeter({
               left: x,
               top: y,
               transform: 'translate(-50%, -50%)',
-              fontSize: r2(Math.max(9, width * 0.045)),
+              fontSize: r2(Math.max(13, width * 0.075)),
               fontFamily: 'var(--font-mono, monospace)',
               fontWeight: 700,
-              color: tick.db >= 0 ? '#8a1f14' : scaleColor,
+              color: tick.db >= 0 ? '#c0291a' : scaleColor,
+              textShadow:
+                tick.db >= 0
+                  ? '0 0 5px rgba(224,60,40,0.6), 0 1px 0 rgba(255,255,255,0.4)'
+                  : '0 0 4px rgba(255,235,190,0.8), 0 1px 0 rgba(255,255,255,0.5)',
             }}
           >
             {tick.label}
