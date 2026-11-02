@@ -63,6 +63,16 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const fileInputRef = useRef<HTMLInputElement>(null);
   const playlistInputRef = useRef<HTMLInputElement>(null);
   const startCtxTimeRef = useRef<number | null>(null);
+  // Responsive scaling: the whole deck is a pixel-exact 1180px design (the
+  // reel/tape-path geometry depends on exact px relationships), so instead
+  // of reflowing it for every screen we scale the whole thing uniformly to
+  // fit the available width — desktop, iPad, or phone — and reserve exactly
+  // that scaled height so nothing leaves blank space or clips.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [sceneHeight, setSceneHeight] = useState<number | null>(null);
+  const DESIGN_WIDTH = 1180;
   // Mirrors `playlist` state so the onended auto-advance callback (set up
   // once per track) always reads the current list instead of a stale one
   // captured when that callback was created.
@@ -121,6 +131,34 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       if (channelRef.current) disconnectMic(channelRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Scale the whole 1180px-design deck to fit whatever width it's given —
+  // desktop, iPad, or phone — and track its natural (unscaled) height so
+  // the stage reserves exactly the scaled-down space, no blank gap, no
+  // clipping. ResizeObserver reports layout size, which ignores the CSS
+  // transform we apply for the scale itself, so this stays accurate even
+  // as the playlist panel grows/shrinks the deck's natural height.
+  useEffect(() => {
+    const stage = stageRef.current;
+    const scene = sceneRef.current;
+    if (!stage || !scene) return;
+
+    const stageObserver = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? stage.clientWidth;
+      setScale(Math.min(1, width / DESIGN_WIDTH));
+    });
+    const sceneObserver = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height ?? scene.offsetHeight;
+      setSceneHeight(height);
+    });
+
+    stageObserver.observe(stage);
+    sceneObserver.observe(scene);
+    return () => {
+      stageObserver.disconnect();
+      sceneObserver.disconnect();
+    };
   }, []);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -387,7 +425,12 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const feedColorClass = feedLive ? (micActive ? styles.feedGreen : styles.feedBlue) : '';
 
   return (
-    <div className={styles.flipScene}>
+    <div ref={stageRef} className={styles.responsiveStage} style={sceneHeight != null ? { height: sceneHeight * scale } : undefined}>
+    <div
+      ref={sceneRef}
+      className={styles.flipScene}
+      style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
+    >
       <div className={`${styles.flipCard} ${flipped ? styles.flipped : ''}`}>
         <div className={`${styles.cardFace} ${styles.cardFront}`}>
           <div className={styles.frame}>
@@ -650,6 +693,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

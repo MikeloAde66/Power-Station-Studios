@@ -5,9 +5,16 @@
 
 /* --- Flip scene: whole unit rotates to reveal its rear connections --- */
 
+.responsiveStage {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .flipScene {
   width: 1180px;
-  max-width: 100%;
+  flex-shrink: 0;
   perspective: 3200px;
 }
 
