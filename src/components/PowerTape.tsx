@@ -26,18 +26,23 @@ import styles from './PowerTape.module.css';
 // they sound like, not borrowed from any real machine or manufacturer.
 type Preset = { name: string; drive: number; wobble: number; noise: number; output: number };
 
-// Output used to taper down with each preset (as low as -15 dB for the
-// default WARM TAPE), which made the instrument sound broken next to any
-// unprocessed reference track played at unity gain. The tape character
-// (drive/wobble/noise) already carries the "vintage" feel on its own, so
-// output now stays at unity across every preset — nothing trims level
-// unless the engineer dials OUTPUT down themselves.
+// Output stays at unity across every preset (see the note on
+// setTapeOutputLevel) — nothing trims level by default.
+//
+// Noise floor defaults to 0 everywhere, full stop. Character comes from
+// drive/wobble, which an engineer dials up on purpose; nothing here should
+// hand them hiss they didn't ask for. CLEAN TAPE is the default preset on
+// load, and every other preset was pulled back to a genuinely subtle
+// amount — a plugin's job is subtle shaping, not an effect so loud it reads
+// as broken on first listen. DESTROYED was renamed SOFT LIMITER and rebuilt
+// as plain saturation/limiting — no wobble, no noise, nothing that made the
+// original version unusable.
 const PRESETS: Preset[] = [
-  { name: 'CLEAN TAPE', drive: 10, wobble: 5, noise: 5, output: 100 },
-  { name: 'WARM TAPE', drive: 35, wobble: 15, noise: 15, output: 100 },
-  { name: 'VINTAGE WOBBLE', drive: 45, wobble: 55, noise: 25, output: 100 },
-  { name: 'LO-FI CASSETTE', drive: 55, wobble: 40, noise: 45, output: 100 },
-  { name: 'DESTROYED', drive: 85, wobble: 80, noise: 70, output: 100 },
+  { name: 'CLEAN TAPE', drive: 5, wobble: 0, noise: 0, output: 100 },
+  { name: 'WARM TAPE', drive: 25, wobble: 6, noise: 4, output: 100 },
+  { name: 'VINTAGE WOBBLE', drive: 30, wobble: 12, noise: 6, output: 100 },
+  { name: 'LO-FI CASSETTE', drive: 40, wobble: 15, noise: 10, output: 100 },
+  { name: 'SOFT LIMITER', drive: 45, wobble: 0, noise: 0, output: 100 },
 ];
 
 function formatCounter(seconds: number) {
@@ -86,14 +91,14 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
   const [playing, setPlaying] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [drive, setDriveState] = useState(35);
-  const [wobble, setWobble] = useState(15);
-  const [noise, setNoise] = useState(15);
+  const [drive, setDriveState] = useState(5);
+  const [wobble, setWobble] = useState(0);
+  const [noise, setNoise] = useState(0);
   const [output, setOutput] = useState(100);
   const [meter, setMeter] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [activePreset, setActivePreset] = useState<string | null>('WARM TAPE');
+  const [activePreset, setActivePreset] = useState<string | null>('CLEAN TAPE');
   const [micActive, setMicActive] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [playlist, setPlaylist] = useState<{ name: string; file: File }[]>([]);
