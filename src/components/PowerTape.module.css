@@ -40,6 +40,17 @@
   transform: rotateY(180deg);
 }
 
+/* The hidden face still sits in the hit-test path under backface-visibility,
+   so explicitly drop it out of the way of clicks/taps on whichever face is
+   actually showing. */
+.flipCard:not(.flipped) .cardBack {
+  pointer-events: none;
+}
+
+.flipCard.flipped .cardFront {
+  pointer-events: none;
+}
+
 .flipBtn {
   width: 28px;
   height: 28px;
