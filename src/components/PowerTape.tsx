@@ -4,9 +4,8 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import {
   connectMic,
-  createMasterBus,
-  createTapeEngine,
   disconnectMic,
+  getSignalChain,
   loadFileIntoEngine,
   playTestTone,
   readLevel,
@@ -16,7 +15,7 @@ import {
   setWowFlutterDepth,
   startBuffer,
   stopSource,
-  type MasterBus,
+  type ChannelEngine,
   type TapeEngine,
 } from '@/lib/audioEngine';
 import Knob from './Knob';
@@ -54,7 +53,11 @@ type PowerTapeProps = {
 };
 
 export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTapeProps) {
-  const busRef = useRef<MasterBus | null>(null);
+  // Tape is the only transport now: the preamp (channel) is the true source
+  // stage — file/mic input lands there first — and tape is the coloring
+  // stage that always receives whatever the preamp is putting out. Both
+  // refs point at the one shared signal chain.
+  const channelRef = useRef<ChannelEngine | null>(null);
   const engineRef = useRef<TapeEngine | null>(null);
   const rafRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,9 +78,9 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
   function ensureEngine() {
     if (!engineRef.current) {
-      const bus = busRef.current ?? createMasterBus();
-      busRef.current = bus;
-      const engine = createTapeEngine(bus);
+      const chain = getSignalChain();
+      channelRef.current = chain.channel;
+      const engine = chain.tape;
       setTapeDrive(engine, drive / 100);
       setWowFlutterDepth(engine, wobble / 100);
       setTapeNoiseLevel(engine, noise / 100);
@@ -108,7 +111,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (engineRef.current) disconnectMic(engineRef.current);
+      if (channelRef.current) disconnectMic(channelRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,10 +121,15 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     if (!file) return;
     setError(null);
     try {
-      const engine = ensureEngine();
-      await engine.ctx.resume();
-      await loadFileIntoEngine(engine, file);
+      ensureEngine();
+      const channel = channelRef.current!;
+      await channel.ctx.resume();
+      await loadFileIntoEngine(channel, file);
       setFileName(file.name);
+      // Loading on Tape is the one real load path — the preamp is the
+      // source stage that file now has to pass through, so bring it into
+      // view automatically instead of making the engineer go find it.
+      onOpenPreamp?.();
     } catch (err) {
       setError(`Couldn't decode that file: ${(err as Error).message ?? err}`);
     }
@@ -130,14 +138,15 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   async function handlePlay() {
     setError(null);
     try {
-      const engine = ensureEngine();
+      ensureEngine();
+      const channel = channelRef.current!;
       if (micActive) {
-        disconnectMic(engine);
+        disconnectMic(channel);
         setMicActive(false);
       }
-      await engine.ctx.resume();
-      if (fileName && engine.buffer) {
-        const node = startBuffer(engine);
+      await channel.ctx.resume();
+      if (fileName && channel.buffer) {
+        const node = startBuffer(channel);
         if (node) {
           node.onended = () => {
             setPlaying(false);
@@ -146,9 +155,9 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
           };
         }
       } else {
-        playTestTone(engine, 165);
+        playTestTone(channel, 165);
       }
-      startCtxTimeRef.current = engine.ctx.currentTime;
+      startCtxTimeRef.current = channel.ctx.currentTime;
       setElapsedSec(0);
       setPlaying(true);
     } catch (err) {
@@ -157,8 +166,8 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   }
 
   function handleStop() {
-    const engine = engineRef.current;
-    if (engine) stopSource(engine);
+    const channel = channelRef.current;
+    if (channel) stopSource(channel);
     setPlaying(false);
     startCtxTimeRef.current = null;
     setElapsedSec(0);
@@ -167,19 +176,20 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   async function handleMicToggle() {
     setError(null);
     try {
-      const engine = ensureEngine();
+      ensureEngine();
+      const channel = channelRef.current!;
       if (micActive) {
-        disconnectMic(engine);
+        disconnectMic(channel);
         setMicActive(false);
         startCtxTimeRef.current = null;
         setElapsedSec(0);
         return;
       }
-      stopSource(engine);
+      stopSource(channel);
       setPlaying(false);
-      await engine.ctx.resume();
-      await connectMic(engine);
-      startCtxTimeRef.current = engine.ctx.currentTime;
+      await channel.ctx.resume();
+      await connectMic(channel);
+      startCtxTimeRef.current = channel.ctx.currentTime;
       setElapsedSec(0);
       setMicActive(true);
     } catch (err) {

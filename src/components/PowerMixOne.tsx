@@ -3,18 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   connectMic,
-  createChannelEngine,
-  createMasterBus,
   disconnectMic,
-  loadFileIntoEngine,
-  playTestTone,
+  getSignalChain,
   readLevel,
   setChannelLevel,
   setDrive,
-  startBuffer,
   stopSource,
   type ChannelEngine,
-  type MasterBus,
 } from '@/lib/audioEngine';
 import Knob from './Knob';
 import styles from './PowerMixOne.module.css';
@@ -61,13 +56,12 @@ type PowerMixOneProps = {
 };
 
 export default function PowerMixOne({ asModal = false, open = true, onClose, onLiveChange }: PowerMixOneProps) {
-  const busRef = useRef<MasterBus | null>(null);
+  // This is the shared preamp stage now — Tape owns load/play/stop/mic and
+  // feeds audio in from the other side. This unit only shapes it (DRIVE /
+  // OUTPUT / presets) and, via presets, can engage live mic input directly.
   const engineRef = useRef<ChannelEngine | null>(null);
   const rafRef = useRef<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [playing, setPlaying] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
   const [drive, setDriveState] = useState(15); // 0-100
   const [level, setLevelState] = useState(80); // 0-100
   const [meter, setMeter] = useState(0); // 0-1
@@ -77,9 +71,7 @@ export default function PowerMixOne({ asModal = false, open = true, onClose, onL
 
   function ensureEngine() {
     if (!engineRef.current) {
-      const bus = busRef.current ?? createMasterBus();
-      busRef.current = bus;
-      const engine = createChannelEngine(bus);
+      const engine = getSignalChain().channel;
       setDrive(engine, drive / 100);
       setChannelLevel(engine, level / 100);
       engineRef.current = engine;
@@ -99,84 +91,6 @@ export default function PowerMixOne({ asModal = false, open = true, onClose, onL
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    try {
-      const engine = ensureEngine();
-      await engine.ctx.resume();
-      await loadFileIntoEngine(engine, file);
-      setFileName(file.name);
-    } catch (err) {
-      setError(`Couldn't decode that file: ${(err as Error).message ?? err}`);
-    }
-  }
-
-  async function handlePlay() {
-    setError(null);
-    try {
-      const engine = ensureEngine();
-      // A live mic feed and a one-shot file/tone feed both land on the same
-      // input stage — pressing PLAY means "play this file", so drop the
-      // mic first rather than letting both sources talk at once.
-      if (micActive) {
-        disconnectMic(engine);
-        setMicActive(false);
-      }
-      await engine.ctx.resume();
-      if (fileName && engine.buffer) {
-        const node = startBuffer(engine);
-        // File no longer loops — when it plays through naturally, flip the
-        // UI back to "not playing" instead of leaving PLAY stuck disabled.
-        if (node) {
-          node.onended = () => setPlaying(false);
-        }
-      } else {
-        playTestTone(engine, 110);
-      }
-      setPlaying(true);
-    } catch (err) {
-      setError(`Playback failed: ${(err as Error).message ?? err}`);
-    }
-  }
-
-  function handleStop() {
-    const engine = engineRef.current;
-    if (engine) stopSource(engine);
-    setPlaying(false);
-  }
-
-  async function handleMicToggle() {
-    setError(null);
-    try {
-      const engine = ensureEngine();
-      if (micActive) {
-        disconnectMic(engine);
-        setMicActive(false);
-        return;
-      }
-      // Live monitoring and file playback both feed the same input stage —
-      // stop any file/tone source first so turning MIC on doesn't layer a
-      // second signal underneath it.
-      stopSource(engine);
-      setPlaying(false);
-      await engine.ctx.resume();
-      await connectMic(engine);
-      setMicActive(true);
-    } catch (err) {
-      setMicActive(false);
-      const message = (err as Error)?.message ?? String(err);
-      if ((err as Error)?.name === 'NotAllowedError') {
-        setError('Mic access was blocked — allow microphone permission for this site and try again.');
-      } else if ((err as Error)?.name === 'NotFoundError') {
-        setError("No microphone found — check your Scarlett 2i2 is connected and selected as the input.");
-      } else {
-        setError(`Mic input failed: ${message}`);
-      }
-    }
-  }
 
   useEffect(() => {
     return () => {
@@ -231,7 +145,6 @@ export default function PowerMixOne({ asModal = false, open = true, onClose, onL
     if (!micActive) {
       try {
         stopSource(engine);
-        setPlaying(false);
         await engine.ctx.resume();
         await connectMic(engine);
         setMicActive(true);
@@ -268,37 +181,13 @@ export default function PowerMixOne({ asModal = false, open = true, onClose, onL
             <span className={styles.liveLabel}>{micActive ? 'LIVE' : 'OFF'}</span>
           </div>
         </div>
-        <div className={styles.transportMini}>
-          {asModal && (
+        {asModal && (
+          <div className={styles.transportMini}>
             <button className={styles.iconBtn} onClick={onClose} title="Close">
               &#10005;
             </button>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            onChange={handleFile}
-            className={styles.fileInput}
-            id="pmo-upload"
-          />
-          <label htmlFor="pmo-upload" className={styles.iconBtn} title="Load audio">
-            &rsaquo;&rsaquo;&rsaquo;
-          </label>
-          <button className={styles.iconBtn} onClick={handlePlay} disabled={playing} title="Play">
-            &#9654;
-          </button>
-          <button className={styles.iconBtn} onClick={handleStop} disabled={!playing} title="Stop">
-            &#9632;
-          </button>
-          <button
-            className={`${styles.iconBtn} ${micActive ? styles.micActive : ''}`}
-            onClick={handleMicToggle}
-            title={micActive ? 'Stop live mic monitoring' : 'Monitor live mic input (e.g. Scarlett 2i2)'}
-          >
-            &#9679;
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       <div className={styles.body}>

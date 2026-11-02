@@ -459,3 +459,40 @@ export function setTapeOutputLevel(engine: TapeEngine, amount01: number) {
   const gain = Math.pow(10, db / 20);
   engine.outputGain.gain.setTargetAtTime(gain, engine.ctx.currentTime, 0.01);
 }
+
+// ---------------------------------------------------------------------------
+// Shared signal chain — the real wiring that makes Power Mix One and Power
+// Tape one instrument instead of two unrelated engines that happen to sit
+// on the same page.
+//
+//   source (file / mic) -> preamp (channel) -> tape -> master bus -> speakers
+//
+// Power Mix One's channel strip no longer feeds the master bus directly —
+// its output is redirected into the tape engine's input, so everything
+// that passes through the preamp is then captured by the tape stage. One
+// AudioContext, one chain, created once and shared by both units.
+// ---------------------------------------------------------------------------
+
+export type SignalChain = {
+  bus: MasterBus;
+  channel: ChannelEngine; // the preamp
+  tape: TapeEngine;
+};
+
+let sharedChain: SignalChain | null = null;
+
+export function getSignalChain(): SignalChain {
+  if (!sharedChain) {
+    const bus = createMasterBus();
+    const channel = createChannelEngine(bus);
+    const tape = createTapeEngine(bus);
+
+    // Redirect: preamp output -> tape input, instead of preamp -> master.
+    // Tape is now the final coloring stage before the master bus.
+    channel.analyser.disconnect(bus.masterGain);
+    channel.analyser.connect(tape.inputGain);
+
+    sharedChain = { bus, channel, tape };
+  }
+  return sharedChain;
+}
