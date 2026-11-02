@@ -71,7 +71,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [sceneHeight, setSceneHeight] = useState<number | null>(null);
+  const [stageHeight, setStageHeight] = useState<number | null>(null);
   const DESIGN_WIDTH = 1180;
   // Mirrors `playlist` state so the onended auto-advance callback (set up
   // once per track) always reads the current list instead of a stale one
@@ -141,25 +141,28 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   // as the playlist panel grows/shrinks the deck's natural height.
   useEffect(() => {
     const stage = stageRef.current;
-    const scene = sceneRef.current;
-    if (!stage || !scene) return;
+    if (!stage) return;
 
     const stageObserver = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? stage.clientWidth;
       setScale(Math.min(1, width / DESIGN_WIDTH));
     });
-    const sceneObserver = new ResizeObserver((entries) => {
-      const height = entries[0]?.contentRect.height ?? scene.offsetHeight;
-      setSceneHeight(height);
-    });
-
     stageObserver.observe(stage);
-    sceneObserver.observe(scene);
-    return () => {
-      stageObserver.disconnect();
-      sceneObserver.disconnect();
-    };
+    return () => stageObserver.disconnect();
   }, []);
+
+  // getBoundingClientRect already reflects the transform's visual size, so
+  // no scale math here — just measure it fresh after scale or content
+  // (e.g. the playlist panel appearing) changes the rendered height, and
+  // reserve exactly that in the stage so nothing clips or leaves a gap.
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const raf = requestAnimationFrame(() => {
+      setStageHeight(scene.getBoundingClientRect().height);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [scale, playlist.length, flipped]);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -425,7 +428,11 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
   const feedColorClass = feedLive ? (micActive ? styles.feedGreen : styles.feedBlue) : '';
 
   return (
-    <div ref={stageRef} className={styles.responsiveStage} style={sceneHeight != null ? { height: sceneHeight * scale } : undefined}>
+    <div
+      ref={stageRef}
+      className={styles.responsiveStage}
+      style={stageHeight != null ? { height: stageHeight } : undefined}
+    >
     <div
       ref={sceneRef}
       className={styles.flipScene}
