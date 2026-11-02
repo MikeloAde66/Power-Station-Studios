@@ -176,9 +176,15 @@ export default function PowerMixOne({ asModal = false, open = true, onClose, onL
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.wordmark}>POWER MIX ONE</div>
-          <div className={styles.liveLamp} title={micActive ? 'Live' : 'Off'}>
+          {/* This lamp is about the microphone specifically — whether live
+              mic input is being monitored. It is NOT a bypass switch: the
+              preamp's drive/output coloring is always applied to whatever
+              is playing (file or mic) per the shared signal chain, so the
+              label says MIC rather than a bare LIVE/OFF that reads as if
+              the whole unit were disengaged. */}
+          <div className={styles.liveLamp} title={micActive ? 'Microphone input is live' : 'Microphone input is off — the preamp itself is always processing playback'}>
             <span className={`${styles.liveDot} ${micActive ? styles.liveDotOn : styles.liveDotOff}`} />
-            <span className={styles.liveLabel}>{micActive ? 'LIVE' : 'OFF'}</span>
+            <span className={styles.liveLabel}>{micActive ? 'MIC LIVE' : 'MIC OFF'}</span>
           </div>
         </div>
         {asModal && (

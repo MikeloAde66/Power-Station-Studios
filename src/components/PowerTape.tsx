@@ -116,6 +116,16 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       .catch(() => setUnlocked(false));
   }, []);
 
+  // First thing an unlocked engineer should see is a choice, not a wall of
+  // knobs: load a single file or a whole playlist. Derived rather than its
+  // own effect-driven state, so it closes itself the instant something's
+  // actually loaded with no extra render pass, and can still be skipped
+  // outright for someone who just wants to look around first. Locked
+  // (demo) visitors never see this — they have nothing to upload, just the
+  // TRY DEMO button.
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const showOnboarding = !onboardingDismissed && !fileName && playlist.length === 0;
+
   function ensureEngine() {
     if (!engineRef.current) {
       const chain = getSignalChain();
@@ -476,6 +486,36 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       className={styles.responsiveStage}
       style={stageHeight != null ? { height: stageHeight } : undefined}
     >
+    {unlocked && showOnboarding && (
+      <div className={styles.onboardBackdrop}>
+        <div className={styles.onboardCard}>
+          <h2 className={styles.onboardTitle}>LOAD YOUR MUSIC</h2>
+          <p className={styles.onboardSubtitle}>
+            Bring in one track to hear it through Power Tape, or load a whole
+            playlist at once and batch through it.
+          </p>
+          <div className={styles.onboardActions}>
+            <button
+              type="button"
+              className={styles.onboardBtn}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              UPLOAD A FILE
+            </button>
+            <button
+              type="button"
+              className={`${styles.onboardBtn} ${styles.onboardBtnSecondary}`}
+              onClick={() => playlistInputRef.current?.click()}
+            >
+              LOAD A PLAYLIST
+            </button>
+          </div>
+          <button type="button" className={styles.onboardSkip} onClick={() => setOnboardingDismissed(true)}>
+            Skip for now
+          </button>
+        </div>
+      </div>
+    )}
     <div
       ref={sceneRef}
       className={styles.flipScene}

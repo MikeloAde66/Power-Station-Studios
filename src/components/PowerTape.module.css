@@ -990,3 +990,93 @@
   position: relative;
   z-index: 1;
 }
+
+/* --- Onboarding: the very first thing an unlocked engineer sees is a
+   choice — load one file, or a whole playlist — not a wall of knobs they
+   have to figure out first. Closes itself the moment something loads. --- */
+
+.onboardBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 7, 4, 0.78);
+}
+
+.onboardCard {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  padding: 40px 36px 32px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #fdeecb 0%, #f0cd73 16%, #d9a33e 36%, #b17f26 56%, #8a611c 76%, #5c4012 100%);
+  border: 3px solid #2e2008;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.55), inset 0 2px 1px rgba(255, 255, 255, 0.65);
+}
+
+.onboardTitle {
+  font-family: var(--font-display, 'Barlow Condensed', sans-serif);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  color: #2a1c0a;
+  margin: 0 0 10px;
+}
+
+.onboardSubtitle {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  color: #5c4012;
+  margin: 0 0 26px;
+}
+
+.onboardActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboardBtn {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ead9b0;
+  padding: 14px 20px;
+  border-radius: 6px;
+  background: radial-gradient(circle at 35% 30%, #5a4825, #2a2008 78%);
+  border: 1px solid #1a1403;
+  cursor: pointer;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.onboardBtn:hover {
+  border-color: #fdeecb;
+}
+
+.onboardBtnSecondary {
+  background: rgba(42, 28, 10, 0.12);
+  color: #2a1c0a;
+  border: 1px solid rgba(42, 28, 10, 0.4);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.onboardSkip {
+  margin-top: 20px;
+  background: none;
+  border: none;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(42, 28, 10, 0.65);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.onboardSkip:hover {
+  color: #2a1c0a;
+}
