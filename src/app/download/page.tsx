@@ -7,7 +7,7 @@ import styles from './page.module.css';
 
 const BONUS_TRACKS = [
   { file: 'westcoast-e.mp3', title: 'Westcoast E' },
-  { file: 'next-one.mp3', title: 'Next One' },
+  { file: 'spice.mp3', title: 'Spice' },
   { file: 'new-york-vibe-rock.mp3', title: 'New York Vibe Rock' },
 ];
 

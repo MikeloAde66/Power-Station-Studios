@@ -10,7 +10,7 @@ import { UNLOCK_COOKIE_NAME, verifyUnlockToken } from '@/lib/access';
 
 const BONUS_TRACKS: Record<string, { file: string; title: string }> = {
   'westcoast-e.mp3': { file: 'westcoast-e.mp3', title: 'Westcoast E' },
-  'next-one.mp3': { file: 'next-one.mp3', title: 'Next One' },
+  'spice.mp3': { file: 'spice.mp3', title: 'Spice' },
   'new-york-vibe-rock.mp3': { file: 'new-york-vibe-rock.mp3', title: 'New York Vibe Rock' },
 };
 
