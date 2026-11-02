@@ -31,11 +31,12 @@ type Preset = { name: string; drive: number; wobble: number; noise: number; outp
 //
 // Noise floor defaults to 0 everywhere, full stop. Character comes from
 // drive/wobble, which an engineer dials up on purpose; nothing here should
-// hand them hiss they didn't ask for. CLEAN TAPE is the default preset on
-// load, and every other preset was pulled back to a genuinely subtle
-// amount — a plugin's job is subtle shaping, not an effect so loud it reads
-// as broken on first listen. DESTROYED was renamed SOFT LIMITER and rebuilt
-// as plain saturation/limiting — no wobble, no noise, nothing that made the
+// hand them hiss they didn't ask for. WARM TAPE is the default preset on
+// load — it's the signature character people expect from this unit — and
+// every other preset was pulled back to a genuinely subtle amount — a
+// plugin's job is subtle shaping, not an effect so loud it reads as broken
+// on first listen. DESTROYED was renamed SOFT LIMITER and rebuilt as plain
+// saturation/limiting — no wobble, no noise, nothing that made the
 // original version unusable.
 const PRESETS: Preset[] = [
   { name: 'CLEAN TAPE', drive: 5, wobble: 0, noise: 0, output: 100 },
@@ -91,14 +92,14 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
 
   const [playing, setPlaying] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [drive, setDriveState] = useState(5);
-  const [wobble, setWobble] = useState(0);
-  const [noise, setNoise] = useState(0);
+  const [drive, setDriveState] = useState(25);
+  const [wobble, setWobble] = useState(6);
+  const [noise, setNoise] = useState(4);
   const [output, setOutput] = useState(100);
   const [meter, setMeter] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [activePreset, setActivePreset] = useState<string | null>('CLEAN TAPE');
+  const [activePreset, setActivePreset] = useState<string | null>('WARM TAPE');
   const [micActive, setMicActive] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [playlist, setPlaylist] = useState<{ name: string; file: File }[]>([]);
@@ -205,10 +206,11 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
       await channel.ctx.resume();
       await loadFileIntoEngine(channel, file);
       setFileName(file.name);
-      // Loading on Tape is the one real load path — the preamp is the
-      // source stage that file now has to pass through, so bring it into
-      // view automatically instead of making the engineer go find it.
-      onOpenPreamp?.();
+      // The preamp is always engaged in the background the moment a file
+      // loads — it's the source stage every signal already passes
+      // through — but it no longer pops its own modal open on every
+      // load. Opening it is a deliberate visit via the PRE-AMP button,
+      // not an interruption between picking a file and hearing it play.
     } catch (err) {
       setError(`Couldn't decode that file: ${(err as Error).message ?? err}`);
     }
@@ -342,7 +344,7 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     const startIndex = playlistRef.current.length;
     appendToPlaylist(files);
     if (wasEmpty) {
-      await selectTrack(startIndex, { openPreamp: true });
+      await selectTrack(startIndex);
     }
     if (overflowMessage) setError(overflowMessage);
   }
