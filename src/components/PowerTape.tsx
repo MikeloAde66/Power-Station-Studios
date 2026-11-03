@@ -329,21 +329,41 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     await loadFile(file);
   }
 
-  // Demo mode: the public live site runs the one bundled demo track and
-  // nothing a visitor brings themselves — uploading and the playlist loader
-  // are purchase-only. This fetches that one track and runs it through the
-  // exact same load path as a real upload.
-  async function handleLoadDemo() {
+  // Demo mode: the public site auto-chains through a short set of bundled
+  // tracks for every visitor, locked or unlocked — nobody has to buy
+  // anything to hear what Power Tape does on more than one song. Loading
+  // is async (fetch + blob + decode); the in-flight promise is kept so
+  // Play can wait on it instead of racing ahead to the test tone on a
+  // slow connection (that race was the "first press buzzes, second press
+  // plays" bug).
+  const DEMO_TRACKS = [
+    { url: '/demo/demo-track.mp3', name: 'Power Tape Demo.mp3' },
+    { url: '/demo/nice-rhythm-demo.mp3', name: 'Power Tape Demo 2.mp3' },
+  ];
+  const demoTrackIndexRef = useRef(0);
+  const demoLoadPromiseRef = useRef<Promise<void> | null>(null);
+
+  function loadDemoTrack(index: number) {
     setError(null);
-    try {
-      const res = await fetch('/demo/demo-track.mp3');
-      if (!res.ok) throw new Error('Demo track unavailable right now.');
-      const blob = await res.blob();
-      await loadFile(new File([blob], 'Power Tape Demo.mp3', { type: 'audio/mpeg' }));
-      setIsDemoTrack(true);
-    } catch (err) {
-      setError((err as Error).message ?? "Couldn't load the demo track.");
-    }
+    const track = DEMO_TRACKS[index];
+    const p = (async () => {
+      try {
+        const res = await fetch(track.url);
+        if (!res.ok) throw new Error('Demo track unavailable right now.');
+        const blob = await res.blob();
+        await loadFile(new File([blob], track.name, { type: 'audio/mpeg' }));
+        setIsDemoTrack(true);
+      } catch (err) {
+        setError((err as Error).message ?? "Couldn't load the demo track.");
+      }
+    })();
+    demoLoadPromiseRef.current = p;
+    return p;
+  }
+
+  function handleLoadDemo() {
+    demoTrackIndexRef.current = 0;
+    return loadDemoTrack(0);
   }
 
   // Any visitor with nothing loaded yet — locked or unlocked — gets the
@@ -367,6 +387,35 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileName, playlist.length]);
 
+  // When one bundled demo track ends: if there's another queued, load and
+  // play it straight through — no showcase re-run, just the reels rolling
+  // onto the next song, so a visitor actually sees the transport
+  // auto-advance the way a real playlist does. Once the last one
+  // finishes, invite them to bring their own.
+  async function advanceDemoOrFinish() {
+    const nextIndex = demoTrackIndexRef.current + 1;
+    if (nextIndex < DEMO_TRACKS.length) {
+      demoTrackIndexRef.current = nextIndex;
+      await loadDemoTrack(nextIndex);
+      const channel = channelRef.current;
+      if (channel?.buffer) {
+        const node = startBuffer(channel);
+        if (node) node.onended = () => advanceDemoOrFinish();
+        startCtxTimeRef.current = channel.ctx.currentTime;
+        setElapsedSec(0);
+        setPlaying(true);
+        return;
+      }
+    }
+    setPlaying(false);
+    startCtxTimeRef.current = null;
+    setElapsedSec(0);
+    clearDemoShowcase();
+    // Demo's done — this is the moment to invite them to bring their own
+    // files, instead of making them hunt for it.
+    setUploadModalOpen(true);
+  }
+
   async function handlePlay() {
     // With a playlist loaded, Play resumes/advances through it — the same
     // path selectTrack already uses for auto-advance — instead of the
@@ -384,23 +433,27 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
         setMicActive(false);
       }
       await channel.ctx.resume();
+      // The demo auto-loads in the background on mount; a fast first tap
+      // on Play can beat that fetch/decode to the punch. Wait for
+      // whatever load is in flight rather than falling through to the
+      // test tone.
+      if (demoLoadPromiseRef.current) {
+        await demoLoadPromiseRef.current;
+      }
       if (fileName && channel.buffer) {
         const node = startBuffer(channel);
-        const wasDemo = isDemoTrack;
-        if (node) {
+        if (isDemoTrack) {
+          if (node) node.onended = () => advanceDemoOrFinish();
+          // Pressing Play on the bundled demo kicks off the ~20s
+          // preset-showcase alongside it, ending locked on WARM TAPE.
+          runDemoShowcase();
+        } else if (node) {
           node.onended = () => {
             setPlaying(false);
             startCtxTimeRef.current = null;
             setElapsedSec(0);
-            clearDemoShowcase();
-            // Demo's done — this is the moment to invite them to bring
-            // their own files, instead of making them hunt for it.
-            if (wasDemo) setUploadModalOpen(true);
           };
         }
-        // Pressing Play on the bundled demo kicks off the ~20s
-        // preset-showcase alongside it, ending locked on WARM TAPE.
-        if (isDemoTrack) runDemoShowcase();
       } else {
         playTestTone(channel, 165);
       }
@@ -476,9 +529,22 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     // error banner at its own start — setting this first would just get
     // wiped out immediately by that first-track auto-load.
     let overflowMessage: string | null = null;
-    if (files.length > 15) {
-      overflowMessage = `Only the first 15 of ${files.length} selected songs were added — add the rest in another batch.`;
-      files = files.slice(0, 15);
+    // Locked (free) visitors get a small test-drive playlist — enough to
+    // hear the transport auto-advance on their own songs — capped on the
+    // total playlist, not per batch. Unlocked keeps the existing
+    // per-batch-of-15 behavior, uncapped overall.
+    const maxTotal = unlocked ? Infinity : 3;
+    const roomLeft = maxTotal - playlistRef.current.length;
+    if (roomLeft <= 0) {
+      setError(`Free test-drive is capped at ${maxTotal} songs — unlock to load more.`);
+      return;
+    }
+    if (files.length > Math.min(15, roomLeft)) {
+      const allowed = Math.min(15, roomLeft);
+      overflowMessage = unlocked
+        ? `Only the first ${allowed} of ${files.length} selected songs were added — add the rest in another batch.`
+        : `Free test-drive is capped at ${maxTotal} songs, so only ${allowed} of ${files.length} were added — unlock to load the rest.`;
+      files = files.slice(0, allowed);
     }
     const wasEmpty = playlistRef.current.length === 0;
     const startIndex = playlistRef.current.length;
@@ -984,27 +1050,22 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
             ))}
           </select>
 
-          {unlocked && (
-            <>
-              <input
-                ref={playlistInputRef}
-                type="file"
-                accept="audio/*"
-                multiple
-                onChange={handlePlaylistFiles}
-                className={styles.fileInput}
-                id="pt-playlist"
-              />
-              <label htmlFor="pt-playlist" className={styles.playlistBtn} title="Add up to 15 songs at once">
-                + PLAYLIST
-              </label>
-            </>
-          )}
-          {!unlocked && (
-            <button type="button" className={styles.playlistBtn} disabled title="Unlock with purchase to batch-load a playlist">
-              + PLAYLIST (LOCKED)
-            </button>
-          )}
+          <input
+            ref={playlistInputRef}
+            type="file"
+            accept="audio/*"
+            multiple
+            onChange={handlePlaylistFiles}
+            className={styles.fileInput}
+            id="pt-playlist"
+          />
+          <label
+            htmlFor="pt-playlist"
+            className={styles.playlistBtn}
+            title={unlocked ? 'Add up to 15 songs at once' : 'Test-drive up to 3 of your own songs — unlock for unlimited'}
+          >
+            {unlocked ? '+ PLAYLIST' : '+ PLAYLIST (UP TO 3)'}
+          </label>
 
           <div className={styles.transportGroup}>
             <button
