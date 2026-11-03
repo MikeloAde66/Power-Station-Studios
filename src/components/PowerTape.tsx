@@ -346,20 +346,26 @@ export default function PowerTape({ onOpenPreamp, preampLive = false }: PowerTap
     }
   }
 
-  // Unlocked visitors with nothing loaded yet get the bundled demo
-  // pre-loaded (not playing) instead of a modal shoved in their face — they
-  // can look around, then press Play themselves when ready. Runs once per
-  // mount via the ref guard, not on every render where fileName/playlist
-  // happen to still be empty. handleLoadDemo is intentionally left out of
-  // the deps — it's redefined every render and including it would just
-  // re-fire this on every keystroke elsewhere in the component.
+  // Any visitor with nothing loaded yet — locked or unlocked — gets the
+  // bundled demo pre-loaded (not playing) instead of a modal shoved in
+  // their face — they can look around, then press Play themselves when
+  // ready. Runs once per mount via the ref guard, not on every render
+  // where fileName/playlist happen to still be empty. handleLoadDemo is
+  // intentionally left out of the deps — it's redefined every render and
+  // including it would just re-fire this on every keystroke elsewhere in
+  // the component.
   useEffect(() => {
-    if (unlocked && !demoAutoLoadedRef.current && !fileName && playlist.length === 0) {
+    // Intentionally NOT gated on `unlocked` — the whole point of the demo
+    // track is to hook a visitor who hasn't bought anything yet. Before
+    // this, only already-unlocked browsers got the silent auto-load; a
+    // locked visitor had no track queued at all, so hitting the big Play
+    // button fell through to a raw test tone instead of real music.
+    if (!demoAutoLoadedRef.current && !fileName && playlist.length === 0) {
       demoAutoLoadedRef.current = true;
       handleLoadDemo();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unlocked, fileName, playlist.length]);
+  }, [fileName, playlist.length]);
 
   async function handlePlay() {
     // With a playlist loaded, Play resumes/advances through it — the same
